@@ -398,7 +398,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
                 fontSize: '14px',
               }}
             >
-              {isSubmitting ? 'Registering...' : 'Register Place 🐾'}
+              {isSubmitting ? 'Adding...' : 'Add to Directory 🐾'}
             </button>
           </div>
         </form>
