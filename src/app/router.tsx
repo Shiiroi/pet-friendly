@@ -213,6 +213,7 @@ const HomePage: React.FC = () => {
                 }}
               >
                 <AddPlaceForm
+                  initialPlace={ghostPlace}
                   onClose={() => setIsAddingPlace(false)}
                   onSuccess={handleFormSuccess}
                   onTriggerNicknamePrompt={() => setShowNicknamePrompt(true)}

@@ -9,6 +9,7 @@ interface AddPlaceFormProps {
   onClose: () => void;
   onSuccess: () => void;
   onTriggerNicknamePrompt: () => void;
+  initialPlace?: { name: string; address: string; latitude: number; longitude: number } | null;
 }
 
 interface SelectedSearch {
@@ -35,8 +36,20 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
   onClose,
   onSuccess,
   onTriggerNicknamePrompt,
+  initialPlace,
 }) => {
-  const [selectedPlace, setSelectedPlace] = useState<SelectedSearch | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<SelectedSearch | null>(() => {
+    if (initialPlace) {
+      return {
+        id: `custom-${crypto.randomUUID()}`,
+        name: initialPlace.name,
+        address: initialPlace.address,
+        lat: initialPlace.latitude,
+        lng: initialPlace.longitude,
+      };
+    }
+    return null;
+  });
   const [city, setCity] = useState('');
   const [category, setCategory] = useState('Café');
   const [claim, setClaim] = useState<'allowed' | 'not_allowed' | 'outdoor_only'>('allowed');
@@ -73,40 +86,43 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
     try {
       let resolvedLat = 0;
       let resolvedLng = 0;
-      let gpsAvailable = false;
-
-      // 1. Primary Coordinate Path: Retrieve active user GPS coordinates
-      try {
-        const { latitude, longitude } = await getCurrentPosition();
-        resolvedLat = latitude;
-        resolvedLng = longitude;
-        gpsAvailable = true;
-      } catch (gpsErr) {
-        console.warn('[Add Place GPS Proximity Failed] User location coordinates unavailable:', gpsErr);
-      }
-
-      // 2. Proximity validation: enforce geofence logic
-      // For new places, geofence confirms that coordinates exist and are valid.
       const enforce = import.meta.env.VITE_ENFORCE_GEOFENCE === 'true';
-      if (enforce && !gpsAvailable) {
-        throw new Error('Geofence enforcement active: You must enable active GPS location services and be present at the venue to register new places.');
-      }
 
-      // 3. Fallback Coordinate Path: Fetch coordinates from geocoder if GPS failed
-      if (!gpsAvailable) {
+      if (enforce) {
+        // Enforced production state: Require physical presence coordinates verified by GPS
+        try {
+          const { latitude, longitude } = await getCurrentPosition();
+          resolvedLat = latitude;
+          resolvedLng = longitude;
+        } catch (cause) {
+          throw new Error(
+            'Geofence enforcement active: You must enable active GPS location services and be present at the venue to register new places.',
+            { cause }
+          );
+        }
+      } else {
+        // Developer seeding state: Prioritize using coordinates already resolved during search
         if (selectedPlace.lat !== undefined && selectedPlace.lng !== undefined) {
           resolvedLat = selectedPlace.lat;
           resolvedLng = selectedPlace.lng;
         } else {
-          // Lazy resolve Google Place details coords
+          // Lazy resolve Google Place details coordinates as fallback
           const details = await getPlaceDetails(selectedPlace.id);
           if (details) {
             resolvedLat = details.lat;
             resolvedLng = details.lng;
           } else {
-            throw new Error('Coordinates could not be resolved for this place. Please enable GPS.');
+            // Last resort: try browser GPS
+            try {
+              const { latitude, longitude } = await getCurrentPosition();
+              resolvedLat = latitude;
+              resolvedLng = longitude;
+            } catch (cause) {
+              throw new Error('Coordinates could not be resolved. Please enable location services.', { cause });
+            }
           }
         }
+        console.warn(`[Add Place Skip GPS] Geofencing is off. Using search coordinates: (${resolvedLat}, ${resolvedLng}) directly.`);
       }
 
       // 4. Submit transactional RPC inserting place and initial report together
