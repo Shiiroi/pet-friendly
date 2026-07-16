@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 
+/**
+ * Monitors browser online/offline status and flushes pending offline
+ * reports from IndexedDB to the database upon reconnection.
+ */
 export function useOutboxSync() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -8,10 +12,10 @@ export function useOutboxSync() {
       setIsOnline(true);
       
       // ========================================================================
-      // TODO: Implement flush-on-reconnect logic here.
-      // - Iterate through all pending-reports in IndexedDB.
-      // - Attempt to post them to the Supabase database.
-      // - If successful, delete them or mark them as synced in the outbox.
+      // TODO: Implement flush-on-reconnect logic:
+      // - Query all pending reports from `getPendingReports()`.
+      // - Map and post them to Supabase using the anon client.
+      // - Delete synced entries via `deletePendingReport(id)` on success.
       // ========================================================================
     };
 
@@ -22,9 +26,9 @@ export function useOutboxSync() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Initial sync trigger if app starts up online
+    // Initial check to flush any reports queued during a previous offline session
     if (navigator.onLine) {
-      // TODO: Handle initial flush-on-startup checks
+      // TODO: Trigger initial outbox flush-on-startup
     }
 
     return () => {

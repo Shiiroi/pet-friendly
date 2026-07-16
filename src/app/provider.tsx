@@ -3,7 +3,12 @@ import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider, type Persister } from '@tanstack/react-query-persist-client';
 import { get, set, del } from 'idb-keyval';
 
-// Initialize QueryClient with specified offline parameters
+/**
+ * QueryClient configured for offline-first operations.
+ * - staleTime: 24 hours (data remains fresh for a day before requiring refresh).
+ * - gcTime: 7 days (inactive cache items kept in database for a week).
+ * - networkMode: 'offlineFirst' (enables offline queries/mutations).
+ */
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -17,7 +22,10 @@ const queryClient = new QueryClient({
   },
 });
 
-// Custom IndexedDB persister using idb-keyval to support caching size above localStorage limits
+/**
+ * Asynchronous query cache persister using IndexedDB to store cache
+ * data exceeding localStorage's synchronous storage limits.
+ */
 const idbPersister: Persister = {
   persistClient: async (client) => {
     await set('pet-friendly-ph-cache', client);
@@ -34,6 +42,9 @@ interface AppProviderProps {
   children: React.ReactNode;
 }
 
+/**
+ * AppProvider wrapping TanStack Query with IndexedDB cache persistence.
+ */
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   return (
     <PersistQueryClientProvider

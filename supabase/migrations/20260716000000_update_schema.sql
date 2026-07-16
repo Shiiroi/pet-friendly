@@ -44,6 +44,8 @@ alter table pet_policy_reports drop column nickname;
 drop table if exists place_photos;
 
 -- 6. Replace place_current_status with corroboration-aware views
+-- BUSINESS RULE: Current status is decided by majority corroboration (most agreeing devices).
+-- Ties are broken by the most recent report. Prevents single devices from overwriting consensus.
 drop view if exists place_current_status;
 
 create view place_report_summary as
@@ -61,7 +63,11 @@ select distinct on (place_id)
 from place_report_summary
 order by place_id, agreeing_devices desc, last_reported_at desc;
 
--- 7. Add the corroboration-based contribution counting trigger
+-- 7. Trigger function for corroboration-based contribution points.
+-- BUSINESS RULE: Points are awarded when report is submitted:
+-- - New reporter gets a point if claim matches an existing claim by a different device.
+-- - First matching reporter for the place+claim gets a point for early reporting.
+-- LIMITATION: Match on 3rd+ report double-counts the 1st matching reporter.
 create or replace function bump_contribution_on_corroboration() returns trigger as $$
 declare
   prior_agreeing_device uuid;

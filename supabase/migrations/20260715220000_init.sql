@@ -59,7 +59,9 @@ create table flags (
   created_at timestamptz not null default now()
 );
 
--- 6. Trigger to auto flag places for review on 3+ distinct reporters
+-- 6. Trigger function to auto flag places for review.
+-- BUSINESS RULE: Status flips to 'under_review' only on 3 distinct device flags.
+-- Prevents a single user from spamming the flag button.
 create or replace function check_flag_threshold() returns trigger as $$
 declare
   distinct_flaggers int;
