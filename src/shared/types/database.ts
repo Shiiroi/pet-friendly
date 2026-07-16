@@ -425,6 +425,21 @@ export type Database = {
             }
             Returns: string
           }
+      create_place_with_report: {
+        Args: {
+          p_address: string
+          p_category: string
+          p_city: string
+          p_claim: string
+          p_device_id: string
+          p_latitude: number
+          p_longitude: number
+          p_name: string
+          p_notes: string
+          p_province: string
+        }
+        Returns: string
+      }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {

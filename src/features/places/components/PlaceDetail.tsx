@@ -15,6 +15,12 @@ interface PlaceDetailProps {
   isLoading: boolean;
   /** Fetch error state. */
   error: any;
+  /** Callback triggered to suggest a policy report. */
+  onReportClick?: () => void;
+  /** Callback triggered to flag a spot. */
+  onFlagClick?: () => void;
+  /** Callback triggered to add a place to the directory. */
+  onAddPlaceClick?: () => void;
 }
 
 /**
@@ -29,6 +35,9 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
   reports,
   isLoading,
   error,
+  onReportClick,
+  onFlagClick,
+  onAddPlaceClick,
 }) => {
   const claimLabels: Record<string, string> = {
     allowed: 'Allowed',
@@ -127,7 +136,7 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
             Help fellow pet parents find a place for their furbaby! This place hasn't been listed yet. Be the first to add it! 🐾
           </p>
           <button
-            onClick={() => alert('Add place form coming in the next step! 🐾')}
+            onClick={onAddPlaceClick}
             style={{
               width: '100%',
               backgroundColor: theme.colors.terracotta,
@@ -228,6 +237,42 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                 ))}
               </ul>
             )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+            <button
+              onClick={onReportClick}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                backgroundColor: theme.colors.terracotta,
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Confirm or Suggest Correction 🐾
+            </button>
+          </div>
+
+          <div style={{ marginTop: '12px', textAlign: 'center' }}>
+            <button
+              onClick={onFlagClick}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#ef4444',
+                cursor: 'pointer',
+                fontSize: '11px',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
+            >
+              Flag this place ⚠️
+            </button>
           </div>
         </>
       )}
