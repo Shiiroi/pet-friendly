@@ -14,7 +14,7 @@ import { type ReportItem } from '../../../shared/types/geo';
 export async function getReportsForPlace(placeId: string): Promise<ReportItem[]> {
   const { data, error } = await supabase
     .from('pet_policy_reports')
-    .select('claim, notes, created_at')
+    .select('claim, notes, created_at, device_id')
     .eq('place_id', placeId)
     .order('created_at', { ascending: false });
 

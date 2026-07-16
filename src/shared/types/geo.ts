@@ -22,4 +22,5 @@ export interface ReportItem {
   claim: 'allowed' | 'not_allowed' | 'outdoor_only';
   notes: string | null;
   created_at: string;
+  device_id: string;
 }

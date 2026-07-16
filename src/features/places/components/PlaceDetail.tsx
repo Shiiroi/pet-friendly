@@ -1,6 +1,7 @@
 import React from 'react';
 import { theme } from '../../../shared/styles/theme';
 import { type PlaceInBounds, type ReportItem } from '../../../shared/types/geo';
+import { getDeviceId } from '../../../shared/utils/device-id';
 
 interface PlaceDetailProps {
   /** The selected place record data. Can be a DB place or a temporary geocoded ghost place. */
@@ -232,56 +233,69 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
               </p>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {reports.map((report, idx) => (
-                  <li
-                    key={idx}
-                    style={{
-                      padding: '10px',
-                      borderRadius: '10px',
-                      backgroundColor: theme.colors.background,
-                      marginBottom: '8px',
-                      fontSize: '12px',
-                      borderLeft: `4px solid ${claimColors[report.claim]}`,
-                      border: `1px solid ${theme.colors.borderLight}`,
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontWeight: 700, color: claimColors[report.claim] }}>
-                        {claimLabels[report.claim]}
-                      </span>
-                      <span style={{ color: theme.colors.textMuted, fontSize: '10px' }}>
-                        {new Date(report.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                    {report.notes && (
-                      <p style={{ color: theme.colors.textDark, margin: 0, fontStyle: 'italic' }}>
-                        "{report.notes}"
-                      </p>
-                    )}
-                  </li>
-                ))}
+                {reports.map((report, idx) => {
+                  const isOwnReport = report.device_id === getDeviceId();
+                  return (
+                    <li
+                      key={idx}
+                      style={{
+                        padding: '10px',
+                        borderRadius: '10px',
+                        backgroundColor: theme.colors.background,
+                        marginBottom: '8px',
+                        fontSize: '12px',
+                        borderLeft: `4px solid ${claimColors[report.claim]}`,
+                        border: `1px solid ${theme.colors.borderLight}`,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 700, color: claimColors[report.claim] }}>
+                          {claimLabels[report.claim]}
+                          {isOwnReport && (
+                            <span style={{ color: theme.colors.terracotta, fontWeight: 700, fontSize: '10px', marginLeft: '6px' }}>
+                              (You)
+                            </span>
+                          )}
+                        </span>
+                        <span style={{ color: theme.colors.textMuted, fontSize: '10px' }}>
+                          {new Date(report.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {report.notes && (
+                        <p style={{ color: theme.colors.textDark, margin: 0, fontStyle: 'italic' }}>
+                          "{report.notes}"
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-            <button
-              onClick={onReportClick}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                backgroundColor: theme.colors.terracotta,
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Confirm or Suggest Correction 🐾
-            </button>
-          </div>
+          {(() => {
+            const userReported = reports.some((r) => r.device_id === getDeviceId());
+            return (
+              <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                <button
+                  onClick={onReportClick}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    backgroundColor: theme.colors.terracotta,
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {userReported ? 'Update Your Report 🐾' : 'Confirm or Suggest Correction 🐾'}
+                </button>
+              </div>
+            );
+          })()}
 
           <div style={{ marginTop: '12px', textAlign: 'center' }}>
             <button
