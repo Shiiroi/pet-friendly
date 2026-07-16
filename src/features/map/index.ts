@@ -1,1 +1,1 @@
-export {};
+export { MapView } from './components/MapView';

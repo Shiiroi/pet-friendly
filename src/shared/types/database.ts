@@ -556,6 +556,26 @@ export type Database = {
         Returns: boolean
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
+      get_places_in_bounds: {
+        Args: {
+          max_lat: number
+          max_lng: number
+          min_lat: number
+          min_lng: number
+        }
+        Returns: {
+          address: string
+          agreeing_devices: number
+          category: string
+          city: string
+          claim: string
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          status: string
+        }[]
+      }
       gettransactionid: { Args: never; Returns: unknown }
       longtransactionsenabled: { Args: never; Returns: boolean }
       populate_geometry_columns:
