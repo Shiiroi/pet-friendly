@@ -39,6 +39,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      devices: {
+        Row: {
+          claimed_by: string | null
+          contribution_count: number
+          created_at: string
+          device_id: string
+          nickname: string | null
+        }
+        Insert: {
+          claimed_by?: string | null
+          contribution_count?: number
+          created_at?: string
+          device_id: string
+          nickname?: string | null
+        }
+        Update: {
+          claimed_by?: string | null
+          contribution_count?: number
+          created_at?: string
+          device_id?: string
+          nickname?: string | null
+        }
+        Relationships: []
+      }
       flags: {
         Row: {
           created_at: string
@@ -63,6 +87,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "flags_device_fk"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["device_id"]
+          },
+          {
             foreignKeyName: "flags_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
@@ -77,7 +108,6 @@ export type Database = {
           created_at: string
           device_id: string
           id: string
-          nickname: string | null
           notes: string | null
           place_id: string
         }
@@ -86,7 +116,6 @@ export type Database = {
           created_at?: string
           device_id: string
           id?: string
-          nickname?: string | null
           notes?: string | null
           place_id: string
         }
@@ -95,7 +124,6 @@ export type Database = {
           created_at?: string
           device_id?: string
           id?: string
-          nickname?: string | null
           notes?: string | null
           place_id?: string
         }
@@ -107,37 +135,12 @@ export type Database = {
             referencedRelation: "places"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      place_photos: {
-        Row: {
-          created_at: string
-          device_id: string
-          id: string
-          place_id: string
-          storage_path: string
-        }
-        Insert: {
-          created_at?: string
-          device_id: string
-          id?: string
-          place_id: string
-          storage_path: string
-        }
-        Update: {
-          created_at?: string
-          device_id?: string
-          id?: string
-          place_id?: string
-          storage_path?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "place_photos_place_id_fkey"
-            columns: ["place_id"]
+            foreignKeyName: "reports_device_fk"
+            columns: ["device_id"]
             isOneToOne: false
-            referencedRelation: "places"
-            referencedColumns: ["id"]
+            referencedRelation: "devices"
+            referencedColumns: ["device_id"]
           },
         ]
       }
@@ -148,7 +151,6 @@ export type Database = {
           city: string | null
           created_at: string
           created_by_device_id: string | null
-          created_by_nickname: string | null
           geom: unknown
           id: string
           name: string
@@ -162,7 +164,6 @@ export type Database = {
           city?: string | null
           created_at?: string
           created_by_device_id?: string | null
-          created_by_nickname?: string | null
           geom: unknown
           id?: string
           name: string
@@ -176,7 +177,6 @@ export type Database = {
           city?: string | null
           created_at?: string
           created_by_device_id?: string | null
-          created_by_nickname?: string | null
           geom?: unknown
           id?: string
           name?: string
@@ -184,7 +184,15 @@ export type Database = {
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "places_device_fk"
+            columns: ["created_by_device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["device_id"]
+          },
+        ]
       }
       spatial_ref_sys: {
         Row: {
@@ -256,9 +264,26 @@ export type Database = {
       }
       place_current_status: {
         Row: {
+          agreeing_devices: number | null
           claim: string | null
-          created_at: string | null
-          notes: string | null
+          last_reported_at: string | null
+          place_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_policy_reports_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_report_summary: {
+        Row: {
+          agreeing_devices: number | null
+          claim: string | null
+          last_reported_at: string | null
           place_id: string | null
         }
         Relationships: [
