@@ -233,42 +233,51 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
               </p>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {reports.map((report, idx) => {
-                  const isOwnReport = report.device_id === getDeviceId();
-                  return (
-                    <li
-                      key={idx}
-                      style={{
-                        padding: '10px',
-                        borderRadius: '10px',
-                        backgroundColor: theme.colors.background,
-                        marginBottom: '8px',
-                        fontSize: '12px',
-                        borderLeft: `4px solid ${claimColors[report.claim]}`,
-                        border: `1px solid ${theme.colors.borderLight}`,
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ fontWeight: 700, color: claimColors[report.claim] }}>
-                          {claimLabels[report.claim]}
-                          {isOwnReport && (
-                            <span style={{ color: theme.colors.terracotta, fontWeight: 700, fontSize: '10px', marginLeft: '6px' }}>
-                              (You)
-                            </span>
-                          )}
-                        </span>
-                        <span style={{ color: theme.colors.textMuted, fontSize: '10px' }}>
-                          {new Date(report.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      {report.notes && (
-                        <p style={{ color: theme.colors.textDark, margin: 0, fontStyle: 'italic' }}>
-                          "{report.notes}"
-                        </p>
-                      )}
-                    </li>
-                  );
-                })}
+                {(() => {
+                  const seenDevices = new Set<string>();
+                  const uniqueReports = reports.filter((r) => {
+                    if (seenDevices.has(r.device_id)) return false;
+                    seenDevices.add(r.device_id);
+                    return true;
+                  });
+
+                  return uniqueReports.map((report, idx) => {
+                    const isOwnReport = report.device_id === getDeviceId();
+                    return (
+                      <li
+                        key={idx}
+                        style={{
+                          padding: '10px',
+                          borderRadius: '10px',
+                          backgroundColor: theme.colors.background,
+                          marginBottom: '8px',
+                          fontSize: '12px',
+                          borderLeft: `4px solid ${claimColors[report.claim]}`,
+                          border: `1px solid ${theme.colors.borderLight}`,
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 700, color: claimColors[report.claim] }}>
+                            {claimLabels[report.claim]}
+                            {isOwnReport && (
+                              <span style={{ color: theme.colors.terracotta, fontWeight: 700, fontSize: '10px', marginLeft: '6px' }}>
+                                (You)
+                              </span>
+                            )}
+                          </span>
+                          <span style={{ color: theme.colors.textMuted, fontSize: '10px' }}>
+                            {new Date(report.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {report.notes && (
+                          <p style={{ color: theme.colors.textDark, margin: 0, fontStyle: 'italic' }}>
+                            "{report.notes}"
+                          </p>
+                        )}
+                      </li>
+                    );
+                  });
+                })()}
               </ul>
             )}
           </div>
