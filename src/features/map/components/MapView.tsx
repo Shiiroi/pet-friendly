@@ -17,6 +17,8 @@ interface MapViewProps {
   ghostPlace: { latitude: number; longitude: number; name: string; address: string } | null;
   /** Callback triggered when the ghost marker is clicked. */
   onSelectGhostPlace: (ghost: { latitude: number; longitude: number; name: string; address: string }) => void;
+  /** Toggle indicator to hide the "No spots here" overlay during search/adds. */
+  hideExplainer?: boolean;
 }
 
 const MANILA_CENTER: [number, number] = [14.5995, 120.9842];
@@ -206,6 +208,7 @@ export const MapView: React.FC<MapViewProps> = ({
   centerOverride,
   ghostPlace,
   onSelectGhostPlace,
+  hideExplainer,
 }) => {
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [initialCenter, setInitialCenter] = useState<[number, number]>(MANILA_CENTER);
@@ -377,7 +380,7 @@ export const MapView: React.FC<MapViewProps> = ({
       </MapContainer>
 
       {/* Viewport empty status indicator card */}
-      {places.length === 0 && (
+      {places.length === 0 && !ghostPlace && !hideExplainer && (
         <div
           style={{
             position: 'absolute',

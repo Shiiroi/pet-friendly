@@ -164,23 +164,6 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
           >
             Add to Directory 🐾
           </button>
-          <button
-            onClick={onClose}
-            style={{
-              width: '100%',
-              marginTop: '8px',
-              padding: '10px',
-              backgroundColor: '#f3f4f6',
-              color: '#374151',
-              border: 'none',
-              borderRadius: '20px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontSize: '13px',
-            }}
-          >
-            Close Details
-          </button>
         </div>
       ) : (
         /* Database Place Details & Reviews timeline */
@@ -265,15 +248,13 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                           <span style={{ fontWeight: 700, color: claimColors[report.claim] }}>
                             {claimLabels[report.claim]}
-                            {isOwnReport && (
-                              <span style={{ color: theme.colors.terracotta, fontWeight: 700, fontSize: '10px', marginLeft: '6px' }}>
-                                (You)
-                              </span>
-                            )}
                           </span>
                           <span style={{ color: theme.colors.textMuted, fontSize: '10px' }}>
                             {new Date(report.created_at).toLocaleDateString()}
                           </span>
+                        </div>
+                        <div style={{ fontSize: '10px', color: theme.colors.textMuted, marginBottom: '6px' }}>
+                          by {isOwnReport ? 'You' : (report.nickname || 'Guest Contributor')}
                         </div>
                         {report.notes && (
                           <p style={{ color: theme.colors.textDark, margin: 0, fontStyle: 'italic' }}>
@@ -340,25 +321,6 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
               }}
             >
               Flag this place ⚠️
-            </button>
-          </div>
-
-          <div style={{ marginTop: '16px', borderTop: `1px solid ${theme.colors.borderLight}`, paddingTop: '12px' }}>
-            <button
-              onClick={onClose}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                backgroundColor: '#f3f4f6',
-                color: '#374151',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Close Details
             </button>
           </div>
         </>

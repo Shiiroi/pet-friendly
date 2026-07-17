@@ -23,4 +23,5 @@ export interface ReportItem {
   notes: string | null;
   created_at: string;
   device_id: string;
+  nickname?: string | null;
 }

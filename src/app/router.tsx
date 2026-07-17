@@ -158,6 +158,7 @@ const HomePage: React.FC = () => {
               centerOverride={centerOverride}
               ghostPlace={ghostPlace}
               onSelectGhostPlace={handleSelectGhostPin}
+              hideExplainer={!!selectedPlace || isAddingPlace}
             />
 
             {/* Input Overlay */}
