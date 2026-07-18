@@ -28,13 +28,13 @@ const queryClient = new QueryClient({
  */
 const idbPersister: Persister = {
   persistClient: async (client) => {
-    await set('pet-friendly-ph-cache', client);
+    await set('compaws-cache', client);
   },
   restoreClient: async () => {
-    return await get('pet-friendly-ph-cache');
+    return await get('compaws-cache');
   },
   removeClient: async () => {
-    await del('pet-friendly-ph-cache');
+    await del('compaws-cache');
   },
 };
 

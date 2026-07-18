@@ -110,7 +110,7 @@ export const FAQ: React.FC = () => {
             margin: '0 0 40px 0',
           }}
         >
-          Everything you need to know about contributing to Pet Friendly PH.
+          Everything you need to know about contributing to Compaws.
         </p>
 
         <div

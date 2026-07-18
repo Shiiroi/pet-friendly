@@ -1,7 +1,7 @@
 import { supabase } from '../api/supabase-client';
 import { uuidv4 } from './uuid';
 
-const DEVICE_ID_KEY = 'pet-friendly-ph-device-id';
+const DEVICE_ID_KEY = 'compaws-device-id';
 
 /**
  * Retrieves the persistent device ID from localStorage. If not found,

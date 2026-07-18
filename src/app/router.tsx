@@ -125,7 +125,7 @@ const HomePage: React.FC = () => {
         .eq('device_id', getDeviceId());
 
       if (error) throw error;
-      localStorage.setItem('pet_friendly_nickname', nickname);
+      localStorage.setItem('compaws_nickname', nickname);
       localStorage.setItem('nickname_prompted', 'true');
     } catch (err) {
       console.error('[Nickname Update Failed]:', err);
