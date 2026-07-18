@@ -100,7 +100,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   };
 
   const triggerNicknamePromptFlow = () => {
-    const hasNickname = !!localStorage.getItem('pet_friendly_nickname');
+    const hasNickname = !!localStorage.getItem('compaws_nickname');
     const prompted = localStorage.getItem('nickname_prompted') === 'true';
     if (!hasNickname && !prompted) {
       onTriggerNicknamePrompt();

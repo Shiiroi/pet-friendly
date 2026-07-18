@@ -21,7 +21,7 @@ export interface PendingReport {
   synced: boolean;
 }
 
-const DB_NAME = 'pet-friendly-ph-outbox';
+const DB_NAME = 'compaws-outbox';
 const DB_VERSION = 1;
 const STORE_NAME = 'pending-reports';
 

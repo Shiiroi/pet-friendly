@@ -11,9 +11,9 @@ export default defineConfig({
       srcDir: 'src/sw',
       filename: 'service-worker.ts',
       manifest: {
-        name: 'Pet Friendly PH',
-        short_name: 'PetFriendlyPH',
-        description: 'Find pet friendly places and file reports offline.',
+        name: 'Compaws',
+        short_name: 'Compaws',
+        description: 'Find pet-friendly places and file reports offline with Compaws.',
         theme_color: '#0f172a',
         background_color: '#ffffff',
         display: 'standalone',
