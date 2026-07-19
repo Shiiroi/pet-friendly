@@ -211,20 +211,7 @@ export const MapView: React.FC<MapViewProps> = ({
   hideExplainer,
 }) => {
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
-  const [initialCenter, setInitialCenter] = useState<[number, number]>(MANILA_CENTER);
-
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setInitialCenter([pos.coords.latitude, pos.coords.longitude]);
-        },
-        (err) => {
-          console.warn('[Geolocation Declined] Defaulting view to Metro Manila:', err.message);
-        }
-      );
-    }
-  }, []);
+  const initialCenter = MANILA_CENTER;
 
   const getClusters = () => {
     const clustered: Array<{
