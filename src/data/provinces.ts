@@ -1,4 +1,5 @@
 export const PROVINCES: string[] = [
+  'Metro Manila',
   'Abra',
   'Agusan del Norte',
   'Agusan del Sur',
@@ -47,7 +48,6 @@ export const PROVINCES: string[] = [
   'Maguindanao del Sur',
   'Marinduque',
   'Masbate',
-  'Metro Manila',
   'Misamis Occidental',
   'Misamis Oriental',
   'Mountain Province',

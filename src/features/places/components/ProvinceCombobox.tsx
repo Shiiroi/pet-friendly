@@ -63,7 +63,7 @@ export const ProvinceCombobox: React.FC<ProvinceComboboxProps> = ({ value, onCha
           outline: 'none',
         }}
       />
-      {isOpen && query.trim().length > 0 && (
+      {isOpen && (
         <ul
           style={{
             position: 'absolute',
@@ -75,7 +75,7 @@ export const ProvinceCombobox: React.FC<ProvinceComboboxProps> = ({ value, onCha
             borderRadius: '8px',
             boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
             zIndex: 1100,
-            maxHeight: '160px',
+            maxHeight: '110px',
             overflowY: 'auto',
             marginTop: '4px',
             padding: '4px 0',
@@ -91,13 +91,17 @@ export const ProvinceCombobox: React.FC<ProvinceComboboxProps> = ({ value, onCha
                   onMouseDown={() => handleSelect(prov)}
                   style={{
                     width: '100%',
-                    padding: '8px 12px',
+                    height: '34px',
+                    padding: '0 12px',
+                    display: 'flex',
+                    alignItems: 'center',
                     textAlign: 'left',
                     backgroundColor: 'transparent',
                     border: 'none',
                     cursor: 'pointer',
                     fontSize: '13px',
                     color: '#1f2937',
+                    boxSizing: 'border-box',
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.backgroundColor = '#f3f4f6';

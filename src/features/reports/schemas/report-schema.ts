@@ -7,7 +7,7 @@ export const reportSchema = z.object({
   claim: z.enum(['allowed', 'not_allowed', 'outdoor_only']),
   notes: z
     .string()
-    .max(500, 'Notes must be less than 500 characters')
+    .max(100, 'Notes must be less than 100 characters')
     .nullable()
     .optional(),
 });

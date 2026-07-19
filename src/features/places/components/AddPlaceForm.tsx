@@ -410,8 +410,8 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Diapers required, or medium dogs allowed in outdoor area..."
-              maxLength={500}
+              placeholder="e.g. Diapers required indoors, or al fresco only..."
+              maxLength={100}
               rows={3}
               style={{
                 width: '100%',
