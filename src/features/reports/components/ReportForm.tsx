@@ -28,7 +28,8 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   const [claim, setClaim] = useState<'allowed' | 'not_allowed' | 'outdoor_only'>('allowed');
   const [petMenu, setPetMenu] = useState<'yes' | 'no' | 'not_sure'>('not_sure');
   const [priceRange, setPriceRange] = useState<'budget' | 'mid' | 'splurge'>('mid');
-  const [notes, setNotes] = useState('');
+  const [requirements, setRequirements] = useState<'diaper' | 'caged' | 'none' | 'other'>('diaper');
+  const [otherRequirements, setOtherRequirements] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -37,8 +38,24 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     setIsSubmitting(true);
     setErrorMsg(null);
 
+    let formattedRequirements = requirements as string;
+    if (requirements === 'other') {
+      const trimmed = otherRequirements.trim();
+      if (!trimmed) {
+        setErrorMsg('Please specify your custom pet requirements.');
+        setIsSubmitting(false);
+        return;
+      }
+      if (trimmed.length > 100) {
+        setErrorMsg('Custom requirements must be less than 100 characters.');
+        setIsSubmitting(false);
+        return;
+      }
+      formattedRequirements = `other: ${trimmed}`;
+    }
+
     // Validate inputs using Zod
-    const validation = reportSchema.safeParse({ claim, pet_menu: petMenu, price_range: priceRange, notes });
+    const validation = reportSchema.safeParse({ claim, pet_menu: petMenu, price_range: priceRange, notes: formattedRequirements });
     if (!validation.success) {
       setErrorMsg(validation.error.issues[0].message);
       setIsSubmitting(false);
@@ -59,7 +76,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         claim,
         pet_menu: petMenu,
         price_range: priceRange,
-        notes: notes.trim() || null,
+        notes: formattedRequirements,
       };
 
       // 2. Handle offline caching or online insert
@@ -82,11 +99,17 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       // Handle network offline errors gracefully via local IndexedDB fallback
       if (err instanceof Error && (err.message.includes('fetch') || err.message.includes('NetworkError'))) {
         try {
+          let formattedRequirements = requirements as string;
+          if (requirements === 'other') {
+            formattedRequirements = `other: ${otherRequirements.trim()}`;
+          }
           await addPendingReport('report', {
             place_id: place.id,
             device_id: getDeviceId(),
             claim,
-            notes: notes.trim() || null,
+            pet_menu: petMenu,
+            price_range: priceRange,
+            notes: formattedRequirements,
           });
           alert("Network failure. Saved! We'll submit your report when you're back online. 🐾");
           triggerNicknamePromptFlow();
@@ -248,25 +271,70 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         </div>
 
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px', fontSize: '14px' }}>
-            Optional Notes / Context
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '14px' }}>
+            Pet Requirements
           </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g. Needs diaper inside, or only small dogs allowed..."
-            maxLength={500}
-            rows={3}
-            style={{
-              width: '100%',
-              padding: '10px',
-              borderRadius: '8px',
-              border: '1px solid #ccc',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              resize: 'vertical',
-            }}
-          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: requirements === 'other' ? '12px' : '0' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
+              <input
+                type="radio"
+                name="requirements"
+                value="diaper"
+                checked={requirements === 'diaper'}
+                onChange={() => setRequirements('diaper')}
+              />
+              Diapers Required
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
+              <input
+                type="radio"
+                name="requirements"
+                value="caged"
+                checked={requirements === 'caged'}
+                onChange={() => setRequirements('caged')}
+              />
+              Caged / Stroller / Carrier Required
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
+              <input
+                type="radio"
+                name="requirements"
+                value="none"
+                checked={requirements === 'none'}
+                onChange={() => setRequirements('none')}
+              />
+              None (Free Roam allowed)
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
+              <input
+                type="radio"
+                name="requirements"
+                value="other"
+                checked={requirements === 'other'}
+                onChange={() => setRequirements('other')}
+              />
+              Other (Specify)
+            </label>
+          </div>
+
+          {requirements === 'other' && (
+            <textarea
+              value={otherRequirements}
+              onChange={(e) => setOtherRequirements(e.target.value)}
+              placeholder="e.g. Medium dogs allowed in outdoor area only..."
+              maxLength={100}
+              rows={2}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '8px',
+                border: '1px solid #ccc',
+                fontSize: '14px',
+                boxSizing: 'border-box',
+                resize: 'vertical',
+              }}
+            />
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>

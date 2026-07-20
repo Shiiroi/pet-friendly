@@ -177,86 +177,158 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
             style={{
               borderTop: `1px solid ${theme.colors.borderLight}`,
               borderBottom: `1px solid ${theme.colors.borderLight}`,
-              padding: '14px 0',
-              margin: '14px 0',
+              padding: '16px 0',
+              margin: '16px 0',
             }}
           >
             <h3
               style={{
-                fontSize: '12px',
+                fontSize: '11px',
                 fontWeight: 700,
                 margin: '0 0 12px 0',
-                color: theme.colors.textDark,
+                color: theme.colors.textMuted,
                 fontFamily: theme.fonts.heading,
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em',
+                letterSpacing: '0.08em',
               }}
             >
               Current Status
             </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {(() => {
-                const renderBadge = (
-                  type: 'policy' | 'price' | 'menu',
-                  value: string | null,
-                  agreeingDevices: number,
-                  labelMap: Record<string, string>,
-                  emptyLabel: string
-                ) => {
-                  const style = getConfidenceStyle(type, value, agreeingDevices);
-                  const isConfirmed = agreeingDevices >= 2 && value !== null;
-                  const label = value ? labelMap[value] : emptyLabel;
-                  const microcopy = value
-                    ? isConfirmed
-                      ? `Confirmed by ${agreeingDevices} contributors`
-                      : `Reported by ${agreeingDevices} contributor${agreeingDevices === 1 ? '' : 's'} -- not yet confirmed`
-                    : 'No reports yet';
 
-                  return (
-                    <div
-                      style={{
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        backgroundColor: style.backgroundColor,
-                        border: `2px ${style.borderStyle} ${style.borderColor}`,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '2px',
-                        boxShadow: style.isSolid ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontWeight: 700,
-                          fontSize: '13px',
-                          color: style.textColor,
-                        }}
-                      >
-                        {label}
+            {dbPlace && (() => {
+              // 1. Primary Policy Badge (Highest visual priority)
+              const policyStyle = getConfidenceStyle('policy', dbPlace.claim, dbPlace.agreeing_devices);
+              const policyConfirmed = dbPlace.agreeing_devices >= 2 && dbPlace.claim !== null;
+              const policyLabel = dbPlace.claim ? claimLabels[dbPlace.claim] : 'No policy reports';
+              const policyMicrocopy = dbPlace.claim
+                ? policyConfirmed
+                  ? `Confirmed by ${dbPlace.agreeing_devices} contributors`
+                  : `Reported by ${dbPlace.agreeing_devices} contributor${dbPlace.agreeing_devices === 1 ? '' : 's'} -- not yet confirmed`
+                : 'No reports yet';
+
+              // 2. Helper for secondary rows
+              const renderSecondaryRow = (
+                type: 'price' | 'menu',
+                value: string | null,
+                agreeingDevices: number,
+                labelMap: Record<string, string>,
+                prefixLabel: string,
+                emptyLabel: string
+              ) => {
+                const style = getConfidenceStyle(type, value, agreeingDevices);
+                const isConfirmed = agreeingDevices >= 2 && value !== null;
+                const valueLabel = value ? labelMap[value] : emptyLabel;
+
+                return (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      backgroundColor: '#ffffff',
+                      border: `1px solid ${theme.colors.borderLight}`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span style={{ fontSize: '11px', color: theme.colors.textMuted, fontWeight: 500 }}>
+                        {prefixLabel}
                       </span>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: style.textColor }}>
+                        {valueLabel}
+                      </span>
+                    </div>
+                    {value && (
                       <span
                         style={{
                           fontSize: '10px',
-                          color: style.isSolid ? 'rgba(255,255,255,0.9)' : theme.colors.textMuted,
-                          fontWeight: 500,
+                          fontWeight: 600,
+                          padding: '3px 8px',
+                          borderRadius: '12px',
+                          backgroundColor: style.backgroundColor,
+                          color: style.textColor,
+                          border: `1px ${style.borderStyle} ${style.borderColor}`,
                         }}
                       >
-                        {microcopy}
+                        {isConfirmed ? `Confirmed (${agreeingDevices})` : `Pending (${agreeingDevices})`}
                       </span>
-                    </div>
-                  );
-                };
-
-                return (
-                  <>
-                    {dbPlace && renderBadge('policy', dbPlace.claim, dbPlace.agreeing_devices, claimLabels, 'No policy reports')}
-                    {dbPlace && renderBadge('price', dbPlace.price_range, dbPlace.price_range_agreeing_devices, priceRangeLabels, 'No price reports')}
-                    {dbPlace && renderBadge('menu', dbPlace.pet_menu, dbPlace.pet_menu_agreeing_devices, petMenuLabels, 'No pet menu reports')}
-                  </>
+                    )}
+                  </div>
                 );
-              })()}
-            </div>
+              };
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* Primary Policy Banner */}
+                  <div
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: '10px',
+                      backgroundColor: policyStyle.backgroundColor,
+                      border: `2px ${policyStyle.borderStyle} ${policyStyle.borderColor}`,
+                      boxShadow: policyStyle.isSolid ? '0 4px 12px rgba(0,0,0,0.08)' : 'none',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          color: policyStyle.isSolid ? 'rgba(255,255,255,0.9)' : theme.colors.textMuted,
+                        }}
+                      >
+                        PET POLICY
+                      </span>
+                      {policyConfirmed && (
+                        <span
+                          style={{
+                            fontSize: '9px',
+                            fontWeight: 700,
+                            backgroundColor: '#ffffff',
+                            color: policyStyle.textColor,
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          CONFIRMED
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      style={{
+                        fontSize: '18px',
+                        fontWeight: 800,
+                        color: policyStyle.textColor,
+                      }}
+                    >
+                      {policyLabel}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 500,
+                        color: policyStyle.isSolid ? 'rgba(255,255,255,0.9)' : theme.colors.textMuted,
+                      }}
+                    >
+                      {policyMicrocopy}
+                    </span>
+                  </div>
+
+                  {/* Secondary Attributes (Visual Sub-Hierarchy) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {renderSecondaryRow('price', dbPlace.price_range, dbPlace.price_range_agreeing_devices, priceRangeLabels, 'Price Range', 'No price reports')}
+                    {renderSecondaryRow('menu', dbPlace.pet_menu, dbPlace.pet_menu_agreeing_devices, petMenuLabels, 'Pet Menu', 'No pet menu reports')}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 10px 0', color: theme.colors.textDark, fontFamily: theme.fonts.heading }}>
@@ -287,6 +359,27 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
 
                   return uniqueReports.map((report, idx) => {
                     const isOwnReport = report.device_id === getDeviceId();
+
+                    // Parse requirements note
+                    let reqLabel = '';
+                    let customNote = '';
+
+                    if (report.notes === 'diaper') {
+                      reqLabel = 'Diapers Required';
+                    } else if (report.notes === 'caged') {
+                      reqLabel = 'Caged/Stroller Required';
+                    } else if (report.notes === 'none') {
+                      reqLabel = 'None (Free Roam)';
+                    } else if (report.notes) {
+                      if (report.notes.startsWith('other: ')) {
+                        reqLabel = 'Custom';
+                        customNote = report.notes.substring(7);
+                      } else {
+                        reqLabel = 'Custom';
+                        customNote = report.notes;
+                      }
+                    }
+
                     return (
                       <li
                         key={idx}
@@ -312,14 +405,19 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                           by {isOwnReport ? 'You' : (report.nickname || 'Guest Contributor')}
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '10px', color: theme.colors.textMuted, backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+                          <span style={{ fontSize: '10px', color: theme.colors.textDark, backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', fontWeight: 500 }}>
                             Price: {priceRangeLabels[report.price_range]}
                           </span>
-                          <span style={{ fontSize: '10px', color: theme.colors.textMuted, backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+                          <span style={{ fontSize: '10px', color: theme.colors.textDark, backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', fontWeight: 500 }}>
                             Menu: {petMenuLabels[report.pet_menu]}
                           </span>
+                          {reqLabel && (
+                            <span style={{ fontSize: '10px', color: theme.colors.textDark, backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', fontWeight: 500 }}>
+                              Req: {reqLabel}
+                            </span>
+                          )}
                         </div>
-                        {report.notes && (
+                        {customNote && (
                           <div
                             style={{
                               marginTop: '8px',
@@ -331,7 +429,7 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                             }}
                           >
                             <p style={{ color: theme.colors.textDark, margin: 0, fontStyle: 'italic', fontSize: '11px', lineHeight: '1.4' }}>
-                              “{report.notes}”
+                              “{customNote}”
                             </p>
                           </div>
                         )}
