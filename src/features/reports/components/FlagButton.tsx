@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../../shared/api/supabase-client';
 import { getDeviceId } from '../../../shared/utils/device-id';
-import { checkGeofence } from '../../../shared/utils/geofence';
 import { addPendingReport } from '../../../shared/outbox/outbox-db';
 
 interface FlagButtonProps {
@@ -33,12 +32,6 @@ export const FlagButton: React.FC<FlagButtonProps> = ({
     setErrorMsg(null);
 
     try {
-      // 1. Proximity checks
-      const isNear = await checkGeofence(place.latitude, place.longitude);
-      if (!isNear) {
-        throw new Error('Geofence check failed. You must be physically near the location to flag it.');
-      }
-
       // 2. Submit flag
       const { error } = await supabase.from('flags').insert({
         place_id: place.id,

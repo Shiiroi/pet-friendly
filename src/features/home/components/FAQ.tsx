@@ -72,10 +72,6 @@ export const FAQ: React.FC = () => {
       answer: 'A place policy is verified once at least 2 distinct devices agree on the same claim (e.g. "Allowed"). Single reports show as pending to ensure we maintain confidence in our pet-friendly directory.',
     },
     {
-      question: 'Why do you ask for my location?',
-      answer: 'To prevent fake submissions and spam, we verify that your device is within close proximity of the place you are reporting. This geofence helps ensure all reviews are based on actual visits.',
-    },
-    {
       question: 'What if a place policy changes or is wrong?',
       answer: 'You can submit a correction report! We use majority consensus to update status dynamically. If a place receives multiple spam flags, it automatically goes under review for manual adjustment.',
     },
