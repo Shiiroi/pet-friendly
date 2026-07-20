@@ -30,8 +30,24 @@ export interface ConfidenceStyle {
 export function getConfidenceStyle(
   valueType: 'policy' | 'price' | 'menu' | 'req',
   value: string | null,
-  agreeingDevices: number
+  agreeingDevices: number,
+  runnerUpAgreeingDevices: number = 0
 ): ConfidenceStyle {
+  const isDisputed = runnerUpAgreeingDevices >= 2 && 
+                     (agreeingDevices - runnerUpAgreeingDevices) <= 1;
+
+  if (isDisputed && value !== null) {
+    const color = '#d97706'; // Amber warning color
+    return {
+      backgroundColor: '#fffbeb',
+      textColor: color,
+      valueTextColor: color,
+      borderColor: color,
+      isSolid: false,
+      borderStyle: 'dashed',
+    };
+  }
+
   const isConfirmed = agreeingDevices >= 2 && value !== null;
 
   if (isConfirmed) {

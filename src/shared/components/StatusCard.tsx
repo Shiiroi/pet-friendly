@@ -15,6 +15,8 @@ interface StatusCardProps {
   emptyText: string;
   /** Number of contributing devices who agreed on this consensus. */
   agreeingDevices: number;
+  /** Number of devices for the runner-up option in case of dispute. */
+  runnerUpAgreeingDevices?: number;
   /** Custom children row (e.g. requirement badge pills). */
   children?: React.ReactNode;
   /** Hide the confidence pill entirely (e.g., for Requirements). */
@@ -37,14 +39,19 @@ export const StatusCard: React.FC<StatusCardProps> = ({
   valueIcon,
   emptyText,
   agreeingDevices,
+  runnerUpAgreeingDevices = 0,
   children,
   hideConfidencePill = false,
 }) => {
-  const isConfirmed = agreeingDevices >= 2;
+  const isDisputed = runnerUpAgreeingDevices >= 2 && 
+                     (agreeingDevices - runnerUpAgreeingDevices) <= 1;
+  const isConfirmed = agreeingDevices >= 2 && !isDisputed;
   const hasValue = value !== null;
 
-  // Use the shared confidence utility for trust visual consistency
-  const confStyle = getConfidenceStyle('policy', isConfirmed && hasValue ? 'allowed' : null, agreeingDevices);
+  const valueType = label.toLowerCase().includes('price') ? 'price' : 'menu';
+  const confStyle = getConfidenceStyle(valueType, hasValue ? value : null, agreeingDevices, runnerUpAgreeingDevices);
+
+  const resolvedValueColor = isDisputed ? confStyle.valueTextColor : valueColor;
 
   return (
     <div
@@ -54,7 +61,9 @@ export const StatusCard: React.FC<StatusCardProps> = ({
         padding: '10px 12px',
         borderRadius: '8px',
         backgroundColor: '#ffffff',
-        border: `1px solid ${theme.colors.borderLight}`,
+        border: isDisputed 
+          ? `1px dashed ${confStyle.borderColor}` 
+          : `1px solid ${theme.colors.borderLight}`,
         gap: '4px',
         width: '100%',
         boxSizing: 'border-box',
@@ -79,12 +88,14 @@ export const StatusCard: React.FC<StatusCardProps> = ({
             style={{
               fontSize: '10px',
               fontWeight: 600,
-              color: isConfirmed ? confStyle.borderColor : theme.colors.textMuted,
+              color: isDisputed ? confStyle.borderColor : (isConfirmed ? confStyle.borderColor : theme.colors.textMuted),
               flexShrink: 0,
               whiteSpace: 'nowrap',
             }}
           >
-            {isConfirmed ? `✓ Confirmed (${agreeingDevices})` : `Reported (${agreeingDevices})`}
+            {isDisputed 
+              ? `⚠️ Disputed (${agreeingDevices} vs ${runnerUpAgreeingDevices})` 
+              : (isConfirmed ? `✓ Confirmed (${agreeingDevices})` : `Reported (${agreeingDevices})`)}
           </span>
         )}
       </div>
@@ -96,14 +107,14 @@ export const StatusCard: React.FC<StatusCardProps> = ({
             style={{
               fontSize: '13px',
               fontWeight: 700,
-              color: valueColor,
+              color: resolvedValueColor,
               textAlign: 'left',
             }}
           >
             {value}
           </span>
           {valueIcon && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', color: valueColor, fontSize: '14px', flexShrink: 0 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', color: resolvedValueColor, fontSize: '14px', flexShrink: 0 }}>
               {valueIcon}
             </span>
           )}

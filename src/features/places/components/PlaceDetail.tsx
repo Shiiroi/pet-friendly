@@ -210,14 +210,25 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
 
             {dbPlace && (() => {
               // 1. Primary Policy Badge (Highest visual priority)
-              const policyStyle = getConfidenceStyle('policy', dbPlace.claim, dbPlace.agreeing_devices);
-              const policyConfirmed = dbPlace.agreeing_devices >= 2 && dbPlace.claim !== null;
-              const policyLabel = dbPlace.claim ? claimLabels[dbPlace.claim] : 'No policy reports';
-              const policyMicrocopy = dbPlace.claim
-                ? policyConfirmed
-                  ? `Confirmed by ${dbPlace.agreeing_devices} contributors`
-                  : `Reported by ${dbPlace.agreeing_devices} contributor${dbPlace.agreeing_devices === 1 ? '' : 's'} -- not yet confirmed`
-                : 'No reports yet';
+              const policyDisputed = dbPlace.runner_up_agreeing_devices >= 2 &&
+                (dbPlace.agreeing_devices - dbPlace.runner_up_agreeing_devices) <= 1;
+              const policyConfirmed = dbPlace.agreeing_devices >= 2 && dbPlace.claim !== null && !policyDisputed;
+              const policyStyle = getConfidenceStyle('policy', dbPlace.claim, dbPlace.agreeing_devices, dbPlace.runner_up_agreeing_devices);
+
+              // WHY NAMED CONFLICT LABEL:
+              // A plain "Policy: Allowed" would be actively misleading when the vote is close.
+              // Naming both options lets the reader understand why they see ⚠️ rather than a normal label.
+              const policyLabel = policyDisputed && dbPlace.claim && dbPlace.runner_up_claim
+                ? `${claimLabels[dbPlace.claim]} vs ${claimLabels[dbPlace.runner_up_claim]}`
+                : (dbPlace.claim ? claimLabels[dbPlace.claim] : 'No policy reports');
+
+              const policyMicrocopy = policyDisputed && dbPlace.claim
+                ? `⚠️ Contradictory reports (${dbPlace.agreeing_devices} vs ${dbPlace.runner_up_agreeing_devices})`
+                : dbPlace.claim
+                  ? policyConfirmed
+                    ? `Confirmed by ${dbPlace.agreeing_devices} contributors`
+                    : `Reported by ${dbPlace.agreeing_devices} contributor${dbPlace.agreeing_devices === 1 ? '' : 's'} -- not yet confirmed`
+                  : 'No reports yet';
 
               const getPriceValueColor = (val: string | null) => {
                 if (val === 'budget') return '#2E7D32';
@@ -288,12 +299,29 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                       style={{
                         fontSize: '11px',
                         fontWeight: 500,
-                        color: policyStyle.isSolid ? 'rgba(255,255,255,0.9)' : theme.colors.textMuted,
+                        color: policyDisputed
+                          ? '#d97706'
+                          : (policyStyle.isSolid ? 'rgba(255,255,255,0.9)' : theme.colors.textMuted),
                       }}
                     >
                       {policyMicrocopy}
                     </span>
                   </div>
+
+                  {/* Warm dispute helper — only shown when policy is actively contested */}
+                  {policyDisputed && (
+                    <p
+                      style={{
+                        fontSize: '11px',
+                        color: '#92400e',
+                        margin: '0',
+                        fontStyle: 'italic',
+                        lineHeight: '1.5',
+                      }}
+                    >
+                      Contributors disagree -- help clarify by reporting what you know. 🐾
+                    </p>
+                  )}
 
                   {/* Details section */}
                   <div style={{ marginTop: '4px', borderTop: `1px solid ${theme.colors.borderLight}`, paddingTop: '16px' }}>
@@ -354,6 +382,7 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                               valueColor={getPriceValueColor(dbPlace.price_range)}
                               valueIcon={getPriceValueIcon(dbPlace.price_range)}
                               agreeingDevices={dbPlace.price_range_agreeing_devices}
+                              runnerUpAgreeingDevices={dbPlace.price_range_runner_up_agreeing_devices}
                             />
 
                             {/* Pet Menu Card */}
@@ -364,6 +393,7 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                               valueColor={getMenuValueColor(dbPlace.pet_menu)}
                               valueIcon={getMenuValueIcon(dbPlace.pet_menu)}
                               agreeingDevices={dbPlace.pet_menu_agreeing_devices}
+                              runnerUpAgreeingDevices={dbPlace.pet_menu_runner_up_agreeing_devices}
                             />
 
                             {/* Pet Requirements Card — no overall confidence pill, wraps badges directly underneath the label */}

@@ -273,7 +273,7 @@ export const MapView: React.FC<MapViewProps> = ({
   };
 
   const getMarkerIcon = (place: PlaceInBounds) => {
-    const style = getConfidenceStyle('policy', place.claim, place.agreeing_devices);
+    const style = getConfidenceStyle('policy', place.claim, place.agreeing_devices, place.runner_up_agreeing_devices);
     
     if (style.isSolid) {
       return createCustomPawIcon(style.backgroundColor);

@@ -45,9 +45,15 @@ export async function getPlacesInBounds(
     status: row.status,
     claim: (row.claim as PlaceInBounds['claim']) || null,
     agreeing_devices: row.agreeing_devices,
+    runner_up_claim: (row.runner_up_claim as PlaceInBounds['runner_up_claim']) || null,
+    runner_up_agreeing_devices: row.runner_up_agreeing_devices || 0,
     pet_menu: (row.pet_menu as PlaceInBounds['pet_menu']) || null,
     pet_menu_agreeing_devices: row.pet_menu_agreeing_devices || 0,
+    runner_up_pet_menu: (row.runner_up_pet_menu as PlaceInBounds['runner_up_pet_menu']) || null,
+    pet_menu_runner_up_agreeing_devices: row.pet_menu_runner_up_agreeing_devices || 0,
     price_range: (row.price_range as PlaceInBounds['price_range']) || null,
     price_range_agreeing_devices: row.price_range_agreeing_devices || 0,
+    runner_up_price_range: (row.runner_up_price_range as PlaceInBounds['runner_up_price_range']) || null,
+    price_range_runner_up_agreeing_devices: row.price_range_runner_up_agreeing_devices || 0,
   }));
 }
