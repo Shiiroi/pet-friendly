@@ -495,8 +495,8 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                           backgroundColor: theme.colors.background,
                           marginBottom: '8px',
                           fontSize: '12px',
-                          borderLeft: `4px solid ${claimColors[report.claim]}`,
                           border: `1px solid ${theme.colors.borderLight}`,
+                          borderLeft: `4px solid ${claimColors[report.claim]}`,
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
