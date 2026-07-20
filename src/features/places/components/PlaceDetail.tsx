@@ -96,38 +96,8 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
         boxSizing: 'border-box',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-        <div style={{ flex: 1, marginRight: '16px', minWidth: 0 }}>
-          <span
-            style={{
-              fontSize: '10px',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '1px',
-              backgroundColor: theme.colors.softPink,
-              padding: '4px 10px',
-              borderRadius: '8px',
-              color: theme.colors.terracotta,
-              fontFamily: theme.fonts.heading,
-            }}
-          >
-            {isGhost ? 'Untracked Spot' : (dbPlace?.category || 'General')}
-          </span>
-          <h2
-            style={{
-              fontSize: '22px',
-              fontWeight: 700,
-              margin: '12px 0 6px 0',
-              color: theme.colors.textDark,
-              fontFamily: theme.fonts.heading,
-            }}
-          >
-            {place.name}
-          </h2>
-          <p style={{ fontSize: '13px', color: theme.colors.textMuted, margin: '0 0 12px 0' }}>
-            {place.address}
-          </p>
-        </div>
+      {/* Top close button row */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
         <button
           onClick={onClose}
           aria-label="Close panel"
@@ -151,6 +121,40 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
         >
           &times;
         </button>
+      </div>
+
+      {/* Main Place Header Details */}
+      <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+        <span
+          style={{
+            fontSize: '10px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+            backgroundColor: theme.colors.softPink,
+            padding: '4px 10px',
+            borderRadius: '8px',
+            color: theme.colors.terracotta,
+            fontFamily: theme.fonts.heading,
+            display: 'inline-block',
+          }}
+        >
+          {isGhost ? 'Untracked Spot' : (dbPlace?.category || 'General')}
+        </span>
+        <h2
+          style={{
+            fontSize: '22px',
+            fontWeight: 700,
+            margin: '12px 0 6px 0',
+            color: theme.colors.textDark,
+            fontFamily: theme.fonts.heading,
+          }}
+        >
+          {place.name}
+        </h2>
+        <p style={{ fontSize: '13px', color: theme.colors.textMuted, margin: '0' }}>
+          {place.address}
+        </p>
       </div>
 
       {isGhost ? (
