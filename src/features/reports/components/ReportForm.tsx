@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../../shared/api/supabase-client';
 import { getDeviceId } from '../../../shared/utils/device-id';
-import { checkGeofence } from '../../../shared/utils/geofence';
 import { addPendingReport } from '../../../shared/outbox/outbox-db';
 import { reportSchema } from '../schemas/report-schema';
 
@@ -26,9 +25,12 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   onTriggerNicknamePrompt,
 }) => {
   const [claim, setClaim] = useState<'allowed' | 'not_allowed' | 'outdoor_only'>('allowed');
-  const [petMenu, setPetMenu] = useState<'yes' | 'no' | 'not_sure'>('not_sure');
+  const [petMenu, setPetMenu] = useState<'yes' | 'no' | 'unsure'>('unsure');
   const [priceRange, setPriceRange] = useState<'budget' | 'mid' | 'splurge'>('mid');
-  const [requirements, setRequirements] = useState<'diaper' | 'caged' | 'none' | 'other'>('diaper');
+  const [reqDiaper, setReqDiaper] = useState(true);
+  const [reqCaged, setReqCaged] = useState(false);
+  const [reqStroller, setReqStroller] = useState(false);
+  const [reqOther, setReqOther] = useState(false);
   const [otherRequirements, setOtherRequirements] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -38,8 +40,11 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     setIsSubmitting(true);
     setErrorMsg(null);
 
-    let formattedRequirements = requirements as string;
-    if (requirements === 'other') {
+    const reqs: string[] = [];
+    if (reqDiaper) reqs.push('diaper');
+    if (reqCaged) reqs.push('caged');
+    if (reqStroller) reqs.push('stroller');
+    if (reqOther) {
       const trimmed = otherRequirements.trim();
       if (!trimmed) {
         setErrorMsg('Please specify your custom pet requirements.');
@@ -51,11 +56,15 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         setIsSubmitting(false);
         return;
       }
-      formattedRequirements = `other: ${trimmed}`;
+      reqs.push(`other: ${trimmed}`);
     }
+    const formattedRequirements = reqs.join(', ');
+
+    // Map UI petMenu 'unsure' to database value 'not_sure'
+    const dbPetMenu = petMenu === 'unsure' ? 'not_sure' : petMenu;
 
     // Validate inputs using Zod
-    const validation = reportSchema.safeParse({ claim, pet_menu: petMenu, price_range: priceRange, notes: formattedRequirements });
+    const validation = reportSchema.safeParse({ claim, pet_menu: dbPetMenu, price_range: priceRange, notes: formattedRequirements });
     if (!validation.success) {
       setErrorMsg(validation.error.issues[0].message);
       setIsSubmitting(false);
@@ -63,18 +72,12 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     }
 
     try {
-      // 1. Run geofencing check
-      const isNear = await checkGeofence(place.latitude, place.longitude);
-      if (!isNear) {
-        throw new Error('Geofence verification failed. You must be physically present at the location to submit a report! 🐾');
-      }
-
       const deviceId = getDeviceId();
       const payload = {
         place_id: place.id,
         device_id: deviceId,
         claim,
-        pet_menu: petMenu,
+        pet_menu: dbPetMenu,
         price_range: priceRange,
         notes: formattedRequirements,
       };
@@ -99,15 +102,11 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       // Handle network offline errors gracefully via local IndexedDB fallback
       if (err instanceof Error && (err.message.includes('fetch') || err.message.includes('NetworkError'))) {
         try {
-          let formattedRequirements = requirements as string;
-          if (requirements === 'other') {
-            formattedRequirements = `other: ${otherRequirements.trim()}`;
-          }
           await addPendingReport('report', {
             place_id: place.id,
             device_id: getDeviceId(),
             claim,
-            pet_menu: petMenu,
+            pet_menu: dbPetMenu,
             price_range: priceRange,
             notes: formattedRequirements,
           });
@@ -115,12 +114,13 @@ export const ReportForm: React.FC<ReportFormProps> = ({
           triggerNicknamePromptFlow();
           onSuccess();
           onClose();
+          return;
         } catch (dbErr) {
           setErrorMsg('Failed to cache report offline: ' + (dbErr as Error).message);
+          return;
         }
-      } else {
-        setErrorMsg(err.message || 'An error occurred during submission.');
       }
+      setErrorMsg(err.message || 'An error occurred while submitting your report.');
     } finally {
       setIsSubmitting(false);
     }
@@ -207,7 +207,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 checked={priceRange === 'budget'}
                 onChange={() => setPriceRange('budget')}
               />
-              💰 Budget-Friendly
+              Budget-Friendly
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
               <input
@@ -217,7 +217,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 checked={priceRange === 'mid'}
                 onChange={() => setPriceRange('mid')}
               />
-              💵 Mid-Range
+              Mid-Range
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
               <input
@@ -227,7 +227,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 checked={priceRange === 'splurge'}
                 onChange={() => setPriceRange('splurge')}
               />
-              💳 Splurge-Worthy
+              Splurge-Worthy
             </label>
           </div>
         </div>
@@ -245,7 +245,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 checked={petMenu === 'yes'}
                 onChange={() => setPetMenu('yes')}
               />
-              🍪 Has Pet Treats/Menu
+              Yes (Includes pet treats, puppuccinos, or a dedicated menu)
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
               <input
@@ -255,59 +255,61 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 checked={petMenu === 'no'}
                 onChange={() => setPetMenu('no')}
               />
-              No Pet Menu
+              No (No special food options for pets)
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
               <input
                 type="radio"
                 name="petMenu"
-                value="not_sure"
-                checked={petMenu === 'not_sure'}
-                onChange={() => setPetMenu('not_sure')}
+                value="unsure"
+                checked={petMenu === 'unsure'}
+                onChange={() => setPetMenu('unsure')}
               />
-              ❓ Not Sure
+              Unsure
             </label>
           </div>
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '20px', borderTop: '1px solid #eee', paddingTop: '12px' }}>
           <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '14px' }}>
-            Pet Requirements
+            Pet Requirements (Select all that apply)
           </label>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: requirements === 'other' ? '12px' : '0' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: reqOther ? '12px' : '0' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
               <input
-                type="radio"
-                name="requirements"
-                value="diaper"
-                checked={requirements === 'diaper'}
-                onChange={() => setRequirements('diaper')}
+                type="checkbox"
+                checked={reqDiaper}
+                onChange={(e) => setReqDiaper(e.target.checked)}
               />
               Diapers Required
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
               <input
-                type="radio"
-                name="requirements"
-                value="caged"
-                checked={requirements === 'caged'}
-                onChange={() => setRequirements('caged')}
+                type="checkbox"
+                checked={reqCaged}
+                onChange={(e) => setReqCaged(e.target.checked)}
               />
-              Caged / Stroller / Carrier Required
+              Caged Required
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
               <input
-                type="radio"
-                name="requirements"
-                value="other"
-                checked={requirements === 'other'}
-                onChange={() => setRequirements('other')}
+                type="checkbox"
+                checked={reqStroller}
+                onChange={(e) => setReqStroller(e.target.checked)}
+              />
+              Stroller / Carrier Required
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
+              <input
+                type="checkbox"
+                checked={reqOther}
+                onChange={(e) => setReqOther(e.target.checked)}
               />
               Other (Specify)
             </label>
           </div>
 
-          {requirements === 'other' && (
+          {reqOther && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <textarea
                 value={otherRequirements}

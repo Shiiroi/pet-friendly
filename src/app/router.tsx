@@ -29,7 +29,7 @@ const HomePage: React.FC = () => {
   const [ghostPlace, setGhostPlace] = useState<{ latitude: number; longitude: number; name: string; address: string } | null>(null);
   const [isGhostSelected, setIsGhostSelected] = useState(false);
   const [centerOverride, setCenterOverride] = useState<[number, number] | null>(null);
-  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [userCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
   // Form rendering states
   const [isAddingPlace, setIsAddingPlace] = useState(false);
@@ -62,22 +62,6 @@ const HomePage: React.FC = () => {
     }
   }, []);
 
-  // Fetch user location coordinate pointers for proximity sorting
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserCoords({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-          });
-        },
-        (err) => {
-          console.warn('[Home Geolocation Disabled]:', err.message);
-        }
-      );
-    }
-  }, []);
 
   const handleSelectLocalPlace = (place: PlaceInBounds) => {
     setCenterOverride([place.latitude, place.longitude]);

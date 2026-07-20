@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../../shared/api/supabase-client';
 import { getDeviceId } from '../../../shared/utils/device-id';
-import { getCurrentPosition } from '../../../shared/utils/geofence';
 import { uuidv4 } from '../../../shared/utils/uuid';
 import { addPendingReport } from '../../../shared/outbox/outbox-db';
 import { PlaceSearchBar } from './PlaceSearchBar';
@@ -78,9 +77,12 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
 
   const [category, setCategory] = useState('Café');
   const [claim, setClaim] = useState<'allowed' | 'not_allowed' | 'outdoor_only'>('allowed');
-  const [petMenu, setPetMenu] = useState<'yes' | 'no' | 'not_sure'>('not_sure');
+  const [petMenu, setPetMenu] = useState<'yes' | 'no' | 'unsure'>('unsure');
   const [priceRange, setPriceRange] = useState<'budget' | 'mid' | 'splurge'>('mid');
-  const [requirements, setRequirements] = useState<'diaper' | 'caged' | 'none' | 'other'>('diaper');
+  const [reqDiaper, setReqDiaper] = useState(true);
+  const [reqCaged, setReqCaged] = useState(false);
+  const [reqStroller, setReqStroller] = useState(false);
+  const [reqOther, setReqOther] = useState(false);
   const [otherRequirements, setOtherRequirements] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -116,47 +118,24 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
     let resolvedLng = 0;
 
     try {
-      const enforce = import.meta.env.VITE_ENFORCE_GEOFENCE === 'true';
-
-      if (enforce) {
-        // Enforced production state: Require physical presence coordinates verified by GPS
-        try {
-          const { latitude, longitude } = await getCurrentPosition();
-          resolvedLat = latitude;
-          resolvedLng = longitude;
-        } catch (cause) {
-          throw new Error(
-            'Geofence enforcement active: You must enable active GPS location services and be present at the venue to register new places.',
-            { cause }
-          );
-        }
+      if (selectedPlace.lat !== undefined && selectedPlace.lng !== undefined) {
+        resolvedLat = selectedPlace.lat;
+        resolvedLng = selectedPlace.lng;
       } else {
-        // Developer seeding state: Prioritize using coordinates already resolved during search
-        if (selectedPlace.lat !== undefined && selectedPlace.lng !== undefined) {
-          resolvedLat = selectedPlace.lat;
-          resolvedLng = selectedPlace.lng;
+        const details = await getPlaceDetails(selectedPlace.id);
+        if (details) {
+          resolvedLat = details.lat;
+          resolvedLng = details.lng;
         } else {
-          // Lazy resolve Google Place details coordinates as fallback
-          const details = await getPlaceDetails(selectedPlace.id);
-          if (details) {
-            resolvedLat = details.lat;
-            resolvedLng = details.lng;
-          } else {
-            // Last resort: try browser GPS
-            try {
-              const { latitude, longitude } = await getCurrentPosition();
-              resolvedLat = latitude;
-              resolvedLng = longitude;
-            } catch (cause) {
-              throw new Error('Coordinates could not be resolved. Please enable location services.', { cause });
-            }
-          }
+          throw new Error('Coordinates could not be resolved from search results.');
         }
-        console.warn(`[Add Place Skip GPS] Geofencing is off. Using search coordinates: (${resolvedLat}, ${resolvedLng}) directly.`);
       }
 
-      let formattedRequirements = requirements as string;
-      if (requirements === 'other') {
+      const reqs: string[] = [];
+      if (reqDiaper) reqs.push('diaper');
+      if (reqCaged) reqs.push('caged');
+      if (reqStroller) reqs.push('stroller');
+      if (reqOther) {
         const trimmed = otherRequirements.trim();
         if (!trimmed) {
           setErrorMsg('Please specify your custom pet requirements.');
@@ -168,8 +147,11 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
           setIsSubmitting(false);
           return;
         }
-        formattedRequirements = `other: ${trimmed}`;
+        reqs.push(`other: ${trimmed}`);
       }
+      const formattedRequirements = reqs.join(', ');
+
+      const dbPetMenu = petMenu === 'unsure' ? 'not_sure' : petMenu;
 
       // 4. Submit transactional RPC inserting place and initial report together
       const { data: newPlaceId, error } = await supabase.rpc('create_place_with_report', {
@@ -182,7 +164,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
         p_longitude: resolvedLng,
         p_device_id: getDeviceId(),
         p_claim: claim,
-        p_pet_menu: petMenu,
+        p_pet_menu: dbPetMenu,
         p_price_range: priceRange,
         p_notes: formattedRequirements,
       });
@@ -197,10 +179,14 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
     } catch (err: any) {
       if (err instanceof Error && (err.message.includes('fetch') || err.message.includes('NetworkError'))) {
         try {
-          let formattedRequirements = requirements as string;
-          if (requirements === 'other') {
-            formattedRequirements = `other: ${otherRequirements.trim()}`;
-          }
+          const reqs: string[] = [];
+          if (reqDiaper) reqs.push('diaper');
+          if (reqCaged) reqs.push('caged');
+          if (reqStroller) reqs.push('stroller');
+          if (reqOther) reqs.push(`other: ${otherRequirements.trim()}`);
+          const formattedRequirements = reqs.join(', ');
+          const dbPetMenu = petMenu === 'unsure' ? 'not_sure' : petMenu;
+
           await addPendingReport('place', {
             p_name: selectedPlace.name,
             p_address: selectedPlace.address,
@@ -211,7 +197,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             p_longitude: resolvedLng,
             p_device_id: getDeviceId(),
             p_claim: claim,
-            p_pet_menu: petMenu,
+            p_pet_menu: dbPetMenu,
             p_price_range: priceRange,
             p_notes: formattedRequirements,
           });
@@ -455,7 +441,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
                   checked={priceRange === 'budget'}
                   onChange={() => setPriceRange('budget')}
                 />
-                💰 Budget-Friendly
+                Budget-Friendly
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
                 <input
@@ -465,7 +451,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
                   checked={priceRange === 'mid'}
                   onChange={() => setPriceRange('mid')}
                 />
-                💵 Mid-Range
+                Mid-Range
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
                 <input
@@ -475,7 +461,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
                   checked={priceRange === 'splurge'}
                   onChange={() => setPriceRange('splurge')}
                 />
-                💳 Splurge-Worthy
+                Splurge-Worthy
               </label>
             </div>
           </div>
@@ -493,7 +479,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
                   checked={petMenu === 'yes'}
                   onChange={() => setPetMenu('yes')}
                 />
-                🍪 Has Pet Treats/Menu
+                Yes (Includes pet treats, puppuccinos, or a dedicated menu)
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
                 <input
@@ -503,59 +489,61 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
                   checked={petMenu === 'no'}
                   onChange={() => setPetMenu('no')}
                 />
-                No Pet Menu
+                No (No special food options for pets)
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
                 <input
                   type="radio"
                   name="petMenu"
-                  value="not_sure"
-                  checked={petMenu === 'not_sure'}
-                  onChange={() => setPetMenu('not_sure')}
+                  value="unsure"
+                  checked={petMenu === 'unsure'}
+                  onChange={() => setPetMenu('unsure')}
                 />
-                ❓ Not Sure
+                Unsure
               </label>
             </div>
           </div>
 
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '20px', borderTop: '1px solid #eee', paddingTop: '12px' }}>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '14px' }}>
-              Pet Requirements
+              Pet Requirements (Select all that apply)
             </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: requirements === 'other' ? '12px' : '0' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: reqOther ? '12px' : '0' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
                 <input
-                  type="radio"
-                  name="requirements"
-                  value="diaper"
-                  checked={requirements === 'diaper'}
-                  onChange={() => setRequirements('diaper')}
+                  type="checkbox"
+                  checked={reqDiaper}
+                  onChange={(e) => setReqDiaper(e.target.checked)}
                 />
                 Diapers Required
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
                 <input
-                  type="radio"
-                  name="requirements"
-                  value="caged"
-                  checked={requirements === 'caged'}
-                  onChange={() => setRequirements('caged')}
+                  type="checkbox"
+                  checked={reqCaged}
+                  onChange={(e) => setReqCaged(e.target.checked)}
                 />
-                Caged / Stroller / Carrier Required
+                Caged Required
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
                 <input
-                  type="radio"
-                  name="requirements"
-                  value="other"
-                  checked={requirements === 'other'}
-                  onChange={() => setRequirements('other')}
+                  type="checkbox"
+                  checked={reqStroller}
+                  onChange={(e) => setReqStroller(e.target.checked)}
+                />
+                Stroller / Carrier Required
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
+                <input
+                  type="checkbox"
+                  checked={reqOther}
+                  onChange={(e) => setReqOther(e.target.checked)}
                 />
                 Other (Specify)
               </label>
             </div>
 
-            {requirements === 'other' && (
+            {reqOther && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <textarea
                   value={otherRequirements}

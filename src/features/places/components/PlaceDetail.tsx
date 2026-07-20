@@ -48,15 +48,22 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
   };
 
   const petMenuLabels: Record<string, string> = {
-    yes: '🍪 Has Pet Treats/Menu',
+    yes: 'Has Pet Menu',
     no: 'No Pet Menu',
-    not_sure: '❓ Not Sure',
+    not_sure: 'Unsure',
   };
 
   const priceRangeLabels: Record<string, string> = {
-    budget: '💰 Budget-Friendly',
-    mid: '💵 Mid-Range',
-    splurge: '💳 Splurge-Worthy',
+    budget: 'Budget-Friendly',
+    mid: 'Mid-Range',
+    splurge: 'Splurge-Worthy',
+  };
+
+  const reqLabels: Record<string, string> = {
+    diaper: 'Diapers Required',
+    caged: 'Caged Required',
+    stroller: 'Stroller/Carrier Required',
+    other: 'Custom Requirements',
   };
 
   const claimColors: Record<string, string> = {
@@ -208,7 +215,7 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
 
               // 2. Helper for secondary rows
               const renderSecondaryRow = (
-                type: 'price' | 'menu',
+                type: 'price' | 'menu' | 'policy',
                 value: string | null,
                 agreeingDevices: number,
                 labelMap: Record<string, string>,
@@ -323,8 +330,66 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
 
                   {/* Secondary Attributes (Visual Sub-Hierarchy) */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {renderSecondaryRow('price', dbPlace.price_range, dbPlace.price_range_agreeing_devices, priceRangeLabels, 'Price Range', 'No price reports')}
-                    {renderSecondaryRow('menu', dbPlace.pet_menu, dbPlace.pet_menu_agreeing_devices, petMenuLabels, 'Pet Menu', 'No pet menu reports')}
+                    {(() => {
+                      const getRequirementsConsensus = () => {
+                        if (!reports || reports.length === 0) return null;
+                        const seenDevices = new Set<string>();
+                        const uniqueReports = reports.filter((r) => {
+                          if (seenDevices.has(r.device_id)) return false;
+                          seenDevices.add(r.device_id);
+                          return true;
+                        });
+
+                        if (uniqueReports.length === 0) return null;
+
+                        const counts: Record<string, { count: number; lastDate: number }> = {};
+                        uniqueReports.forEach((r) => {
+                          if (!r.notes) return;
+                          const parts = r.notes.split(',').map((p) => p.trim());
+                          parts.forEach((part) => {
+                            let key = part;
+                            if (part.startsWith('other:')) {
+                              key = 'other';
+                            }
+                            if (!key) return;
+
+                            const time = new Date(r.created_at).getTime();
+                            if (!counts[key]) {
+                              counts[key] = { count: 0, lastDate: time };
+                            }
+                            counts[key].count += 1;
+                            counts[key].lastDate = Math.max(counts[key].lastDate, time);
+                          });
+                        });
+
+                        const entries = Object.entries(counts);
+                        if (entries.length === 0) return null;
+
+                        entries.sort((a, b) => {
+                          if (b[1].count !== a[1].count) {
+                            return b[1].count - a[1].count;
+                          }
+                          return b[1].lastDate - a[1].lastDate;
+                        });
+
+                        return {
+                          key: entries[0][0],
+                          agreeing_devices: entries[0][1].count,
+                        };
+                      };
+
+                      const reqConsensus = getRequirementsConsensus();
+                      const reqValue = reqConsensus?.key || null;
+                      const reqCount = reqConsensus?.agreeing_devices || 0;
+
+                      return (
+                        <>
+                          {renderSecondaryRow('price', dbPlace.price_range, dbPlace.price_range_agreeing_devices, priceRangeLabels, 'Price Range', 'No price reports')}
+                          {renderSecondaryRow('menu', dbPlace.pet_menu, dbPlace.pet_menu_agreeing_devices, petMenuLabels, 'Pet Menu', 'No pet menu reports')}
+                          {renderSecondaryRow('policy', reqValue, reqCount, reqLabels, 'Pet Requirements', 'No requirements reports')}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -361,24 +426,29 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                     const isOwnReport = report.device_id === getDeviceId();
 
                     // Parse requirements note
-                    let reqLabel = '';
+                    const reqLabelsList: string[] = [];
                     let customNote = '';
 
-                    if (report.notes === 'diaper') {
-                      reqLabel = 'Diapers Required';
-                    } else if (report.notes === 'caged') {
-                      reqLabel = 'Caged/Stroller Required';
-                    } else if (report.notes === 'none') {
-                      reqLabel = 'None (Free Roam)';
-                    } else if (report.notes) {
-                      if (report.notes.startsWith('other: ')) {
-                        reqLabel = 'Custom';
-                        customNote = report.notes.substring(7);
-                      } else {
-                        reqLabel = 'Custom';
-                        customNote = report.notes;
-                      }
+                    if (report.notes) {
+                      const parts = report.notes.split(',').map((p) => p.trim());
+                      parts.forEach((part) => {
+                        if (part === 'diaper') {
+                          reqLabelsList.push('Diapers Required');
+                        } else if (part === 'caged') {
+                          reqLabelsList.push('Caged Required');
+                        } else if (part === 'stroller') {
+                          reqLabelsList.push('Stroller/Carrier Required');
+                        } else if (part === 'none') {
+                          reqLabelsList.push('None (Free Roam)');
+                        } else if (part.startsWith('other: ')) {
+                          customNote = part.substring(7);
+                        } else if (part) {
+                          customNote = part;
+                        }
+                      });
                     }
+
+                    const reqLabel = reqLabelsList.join(', ');
 
                     return (
                       <li
