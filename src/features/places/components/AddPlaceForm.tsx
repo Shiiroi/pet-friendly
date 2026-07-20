@@ -5,6 +5,7 @@ import { uuidv4 } from '../../../shared/utils/uuid';
 import { addPendingReport } from '../../../shared/outbox/outbox-db';
 import { PlaceSearchBar } from './PlaceSearchBar';
 import { getPlaceDetails } from '../api/search-google-places';
+import { ProvinceCombobox } from './ProvinceCombobox';
 
 interface AddPlaceFormProps {
   onClose: () => void;
@@ -75,6 +76,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
     return '';
   });
 
+  const [province, setProvince] = useState('');
   const [category, setCategory] = useState('Café');
   const [claim, setClaim] = useState<'allowed' | 'not_allowed' | 'outdoor_only'>('allowed');
   const [notes, setNotes] = useState('');
@@ -102,6 +104,10 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
     }
     if (!city.trim()) {
       setErrorMsg('Please specify the city/locality.');
+      return;
+    }
+    if (!province.trim()) {
+      setErrorMsg('Please select a province.');
       return;
     }
 
@@ -132,7 +138,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
         p_name: selectedPlace.name,
         p_address: selectedPlace.address,
         p_city: city.trim(),
-        p_province: '',
+        p_province: province.trim(),
         p_category: category,
         p_latitude: resolvedLat,
         p_longitude: resolvedLng,
@@ -155,7 +161,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             p_name: selectedPlace.name,
             p_address: selectedPlace.address,
             p_city: city.trim(),
-            p_province: '',
+            p_province: province.trim(),
             p_category: category,
             p_latitude: resolvedLat,
             p_longitude: resolvedLng,
@@ -305,6 +311,15 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
           <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#4b5563', marginBottom: '4px' }}>
+                Province *
+              </label>
+              <ProvinceCombobox
+                value={province}
+                onChange={setProvince}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#4b5563', marginBottom: '4px' }}>
                 City *
               </label>
               <input
@@ -322,31 +337,32 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
                 }}
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#4b5563', marginBottom: '4px' }}>
-                Category *
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: '1px solid #ccc',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                  fontSize: '14px',
-                  boxSizing: 'border-box',
-                }}
-              >
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
-            </div>
+          </div>
+
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#4b5563', marginBottom: '4px' }}>
+              Category *
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '8px',
+                border: '1px solid #ccc',
+                backgroundColor: '#ffffff',
+                color: '#1f2937',
+                fontSize: '14px',
+                boxSizing: 'border-box',
+              }}
+            >
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div style={{ marginBottom: '16px', borderTop: '1px solid #eee', paddingTop: '12px' }}>
@@ -394,8 +410,8 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Diapers required, or medium dogs allowed in outdoor area..."
-              maxLength={500}
+              placeholder="e.g. Diapers required indoors, or al fresco only..."
+              maxLength={100}
               rows={3}
               style={{
                 width: '100%',

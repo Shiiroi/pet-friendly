@@ -168,7 +168,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="e.g. Needs diaper inside, or only small dogs allowed..."
-            maxLength={500}
+            maxLength={100}
             rows={3}
             style={{
               width: '100%',
