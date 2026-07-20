@@ -221,7 +221,7 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
 
               // 2. Helper for Details list items
               const renderDetailListItem = (
-                type: 'price' | 'menu' | 'policy',
+                type: 'price' | 'menu' | 'policy' | 'req',
                 value: string | null,
                 agreeingDevices: number,
                 labelMap: Record<string, string>,
@@ -231,7 +231,12 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
               ) => {
                 const style = getConfidenceStyle(type, value, agreeingDevices);
                 const isConfirmed = agreeingDevices >= 2 && value !== null;
-                const valueLabel = value ? labelMap[value] : emptyLabel;
+                const valueLabel = value ? (labelMap[value] ?? value) : emptyLabel;
+
+                // Icon box background: for icon itself use a subtle tint, not the full solid color
+                // WHY: On unconfirmed (dashed) rows the card background is white. We still want
+                // the icon box to have a subtle tint matching its category color for visual grouping.
+                const iconBg = style.isSolid ? style.backgroundColor : `${style.borderColor}18`;
 
                 return (
                   <div
@@ -243,34 +248,37 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                       borderRadius: '8px',
                       backgroundColor: '#ffffff',
                       border: `1px solid ${theme.colors.borderLight}`,
+                      gap: '8px',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {/* Left: icon + labels */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
                       <div
                         style={{
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: '32px',
-                          height: '32px',
+                          width: '34px',
+                          height: '34px',
                           borderRadius: '8px',
-                          backgroundColor: style.backgroundColor,
+                          backgroundColor: iconBg,
                           flexShrink: 0,
-                          color: style.textColor,
+                          color: style.isSolid ? style.textColor : style.borderColor,
                           fontSize: '18px',
                         }}
                       >
                         {icon}
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{ fontSize: '11px', color: theme.colors.textMuted, fontWeight: 500 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                        <span style={{ fontSize: '11px', color: theme.colors.textMuted, fontWeight: 500, whiteSpace: 'nowrap' }}>
                           {prefixLabel}
                         </span>
-                        <span style={{ fontSize: '13px', fontWeight: 700, color: style.textColor }}>
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: style.valueTextColor }}>
                           {valueLabel}
                         </span>
                       </div>
                     </div>
+                    {/* Right: status badge — only shown when a value exists */}
                     {value && (
                       <span
                         style={{
@@ -278,10 +286,13 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                           fontWeight: 600,
                           padding: '3px 8px',
                           borderRadius: '12px',
-                          backgroundColor: style.backgroundColor,
-                          color: style.textColor,
-                          border: `1px ${style.borderStyle} ${style.borderColor}`,
+                          // Confirmed badge: always solid green to signal trust
+                          // Pending badge: outlined/dashed so user knows it's not consensus yet
+                          backgroundColor: isConfirmed ? '#059669' : '#ffffff',
+                          color: isConfirmed ? '#ffffff' : style.borderColor,
+                          border: `1px ${isConfirmed ? 'solid' : 'dashed'} ${isConfirmed ? '#059669' : style.borderColor}`,
                           flexShrink: 0,
+                          whiteSpace: 'nowrap',
                         }}
                       >
                         {isConfirmed ? `Confirmed (${agreeingDevices})` : `Pending (${agreeingDevices})`}
@@ -411,7 +422,7 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                           <>
                             {renderDetailListItem('price', dbPlace.price_range, dbPlace.price_range_agreeing_devices, priceRangeLabels, 'Price Range', 'No price reports', <MdOutlineMonetizationOn />)}
                             {renderDetailListItem('menu', dbPlace.pet_menu, dbPlace.pet_menu_agreeing_devices, petMenuLabels, 'Pet Menu', 'No pet menu reports', <MdMenuBook />)}
-                            {renderDetailListItem('policy', reqValue, reqCount, reqLabels, 'Pet Requirements', 'No requirements reports', <MdChecklist />)}
+                            {renderDetailListItem('req', reqValue, reqCount, reqLabels, 'Pet Requirements', 'No requirements reports', <MdChecklist />)}
                           </>
                         );
                       })()}
@@ -474,7 +485,7 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                       });
                     }
 
-                    const reqLabel = reqLabelsList.join(', ');
+
 
                     return (
                       <li
@@ -497,33 +508,58 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                             {new Date(report.created_at).toLocaleDateString()}
                           </span>
                         </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '10px', color: theme.colors.textDark, backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', fontWeight: 500 }}>
-                            Price: {priceRangeLabels[report.price_range]}
-                          </span>
-                          <span style={{ fontSize: '10px', color: theme.colors.textDark, backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', fontWeight: 500 }}>
-                            Menu: {petMenuLabels[report.pet_menu]}
-                          </span>
-                          {reqLabel && (
-                            <span style={{ fontSize: '10px', color: theme.colors.textDark, backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', fontWeight: 500 }}>
-                              Req: {reqLabel}
+                        {/* Price & menu info badges */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                          {report.price_range && (
+                            <span style={{ fontSize: '10px', color: theme.colors.textDark, backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', fontWeight: 500, border: '1px solid #e2e8f0' }}>
+                              {priceRangeLabels[report.price_range]}
+                            </span>
+                          )}
+                          {report.pet_menu && (
+                            <span style={{ fontSize: '10px', color: theme.colors.textDark, backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', fontWeight: 500, border: '1px solid #e2e8f0' }}>
+                              {petMenuLabels[report.pet_menu]}
                             </span>
                           )}
                         </div>
-                        {customNote && (
-                          <div
-                            style={{
-                              marginTop: '8px',
-                              padding: '6px 10px',
-                              backgroundColor: '#ffffff',
-                              borderLeft: `3px solid ${theme.colors.unconfirmed}`,
-                              borderRadius: '4px',
-                              textAlign: 'left',
-                            }}
-                          >
-                            <p style={{ color: theme.colors.textDark, margin: 0, fontStyle: 'italic', fontSize: '11px', lineHeight: '1.4' }}>
-                              “{customNote}”
-                            </p>
+                        {/* Requirement pills — each requirement gets its own badge.
+                          * WHY: jamming comma-separated values into one badge loses readability
+                          * and makes it impossible to visually distinguish individual requirements.
+                          * Custom 'other' entries get dashed border to signal they are
+                          * arbitrary user text (not a vetted predefined option). */}
+                        {(reqLabelsList.length > 0 || customNote) && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', marginBottom: '6px' }}>
+                            {reqLabelsList.map((label) => (
+                              <span
+                                key={label}
+                                style={{
+                                  fontSize: '10px',
+                                  color: theme.colors.textDark,
+                                  backgroundColor: '#f1f5f9',
+                                  padding: '3px 8px',
+                                  borderRadius: '4px',
+                                  fontWeight: 500,
+                                  border: '1px solid #e2e8f0',
+                                }}
+                              >
+                                {label}
+                              </span>
+                            ))}
+                            {customNote && (
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  color: theme.colors.textMuted,
+                                  backgroundColor: '#fafafa',
+                                  padding: '3px 8px',
+                                  borderRadius: '4px',
+                                  fontWeight: 500,
+                                  border: `1px dashed ${theme.colors.unconfirmed}`,
+                                  fontStyle: 'italic',
+                                }}
+                              >
+                                {customNote}
+                              </span>
+                            )}
                           </div>
                         )}
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
