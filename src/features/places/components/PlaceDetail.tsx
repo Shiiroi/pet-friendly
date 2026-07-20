@@ -213,14 +213,15 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                   : `Reported by ${dbPlace.agreeing_devices} contributor${dbPlace.agreeing_devices === 1 ? '' : 's'} -- not yet confirmed`
                 : 'No reports yet';
 
-              // 2. Helper for secondary rows
-              const renderSecondaryRow = (
+              // 2. Helper for Details list items
+              const renderDetailListItem = (
                 type: 'price' | 'menu' | 'policy',
                 value: string | null,
                 agreeingDevices: number,
                 labelMap: Record<string, string>,
                 prefixLabel: string,
-                emptyLabel: string
+                emptyLabel: string,
+                iconFn: (color: string) => React.ReactNode
               ) => {
                 const style = getConfidenceStyle(type, value, agreeingDevices);
                 const isConfirmed = agreeingDevices >= 2 && value !== null;
@@ -232,19 +233,34 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      padding: '8px 10px',
+                      padding: '10px 12px',
                       borderRadius: '8px',
                       backgroundColor: '#ffffff',
                       border: `1px solid ${theme.colors.borderLight}`,
                     }}
                   >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ fontSize: '11px', color: theme.colors.textMuted, fontWeight: 500 }}>
-                        {prefixLabel}
-                      </span>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: style.textColor }}>
-                        {valueLabel}
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '6px',
+                          backgroundColor: style.backgroundColor,
+                        }}
+                      >
+                        {iconFn(style.textColor)}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontSize: '11px', color: theme.colors.textMuted, fontWeight: 500 }}>
+                          {prefixLabel}
+                        </span>
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: style.textColor }}>
+                          {valueLabel}
+                        </span>
+                      </div>
                     </div>
                     {value && (
                       <span
@@ -264,6 +280,27 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                   </div>
                 );
               };
+
+              const priceIcon = (color: string) => (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
+                  <line x1="12" y1="18" x2="12" y2="18" />
+                  <line x1="-2" y1="8" x2="26" y2="8" />
+                </svg>
+              );
+
+              const menuIcon = (color: string) => (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 3h14c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2z" />
+                  <path d="M9 7h6M9 12h6M9 17h6" />
+                </svg>
+              );
+
+              const reqIcon = (color: string) => (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              );
 
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -292,21 +329,6 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                       >
                         PET POLICY
                       </span>
-                      {policyConfirmed && (
-                        <span
-                          style={{
-                            fontSize: '9px',
-                            fontWeight: 700,
-                            backgroundColor: '#ffffff',
-                            color: policyStyle.textColor,
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          CONFIRMED
-                        </span>
-                      )}
                     </div>
                     <span
                       style={{
@@ -328,68 +350,83 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                     </span>
                   </div>
 
-                  {/* Secondary Attributes (Visual Sub-Hierarchy) */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {(() => {
-                      const getRequirementsConsensus = () => {
-                        if (!reports || reports.length === 0) return null;
-                        const seenDevices = new Set<string>();
-                        const uniqueReports = reports.filter((r) => {
-                          if (seenDevices.has(r.device_id)) return false;
-                          seenDevices.add(r.device_id);
-                          return true;
-                        });
-
-                        if (uniqueReports.length === 0) return null;
-
-                        const counts: Record<string, { count: number; lastDate: number }> = {};
-                        uniqueReports.forEach((r) => {
-                          if (!r.notes) return;
-                          const parts = r.notes.split(',').map((p) => p.trim());
-                          parts.forEach((part) => {
-                            let key = part;
-                            if (part.startsWith('other:')) {
-                              key = 'other';
-                            }
-                            if (!key) return;
-
-                            const time = new Date(r.created_at).getTime();
-                            if (!counts[key]) {
-                              counts[key] = { count: 0, lastDate: time };
-                            }
-                            counts[key].count += 1;
-                            counts[key].lastDate = Math.max(counts[key].lastDate, time);
+                  {/* Details section */}
+                  <div style={{ marginTop: '4px', borderTop: `1px solid ${theme.colors.borderLight}`, paddingTop: '16px' }}>
+                    <h4
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        margin: '0 0 12px 0',
+                        color: theme.colors.textMuted,
+                        fontFamily: theme.fonts.heading,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                      }}
+                    >
+                      Details
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {(() => {
+                        const getRequirementsConsensus = () => {
+                          if (!reports || reports.length === 0) return null;
+                          const seenDevices = new Set<string>();
+                          const uniqueReports = reports.filter((r) => {
+                            if (seenDevices.has(r.device_id)) return false;
+                            seenDevices.add(r.device_id);
+                            return true;
                           });
-                        });
 
-                        const entries = Object.entries(counts);
-                        if (entries.length === 0) return null;
+                          if (uniqueReports.length === 0) return null;
 
-                        entries.sort((a, b) => {
-                          if (b[1].count !== a[1].count) {
-                            return b[1].count - a[1].count;
-                          }
-                          return b[1].lastDate - a[1].lastDate;
-                        });
+                          const counts: Record<string, { count: number; lastDate: number }> = {};
+                          uniqueReports.forEach((r) => {
+                            if (!r.notes) return;
+                            const parts = r.notes.split(',').map((p) => p.trim());
+                            parts.forEach((part) => {
+                              let key = part;
+                              if (part.startsWith('other:')) {
+                                key = 'other';
+                              }
+                              if (!key) return;
 
-                        return {
-                          key: entries[0][0],
-                          agreeing_devices: entries[0][1].count,
+                              const time = new Date(r.created_at).getTime();
+                              if (!counts[key]) {
+                                counts[key] = { count: 0, lastDate: time };
+                              }
+                              counts[key].count += 1;
+                              counts[key].lastDate = Math.max(counts[key].lastDate, time);
+                            });
+                          });
+
+                          const entries = Object.entries(counts);
+                          if (entries.length === 0) return null;
+
+                          entries.sort((a, b) => {
+                            if (b[1].count !== a[1].count) {
+                              return b[1].count - a[1].count;
+                            }
+                            return b[1].lastDate - a[1].lastDate;
+                          });
+
+                          return {
+                            key: entries[0][0],
+                            agreeing_devices: entries[0][1].count,
+                          };
                         };
-                      };
 
-                      const reqConsensus = getRequirementsConsensus();
-                      const reqValue = reqConsensus?.key || null;
-                      const reqCount = reqConsensus?.agreeing_devices || 0;
+                        const reqConsensus = getRequirementsConsensus();
+                        const reqValue = reqConsensus?.key || null;
+                        const reqCount = reqConsensus?.agreeing_devices || 0;
 
-                      return (
-                        <>
-                          {renderSecondaryRow('price', dbPlace.price_range, dbPlace.price_range_agreeing_devices, priceRangeLabels, 'Price Range', 'No price reports')}
-                          {renderSecondaryRow('menu', dbPlace.pet_menu, dbPlace.pet_menu_agreeing_devices, petMenuLabels, 'Pet Menu', 'No pet menu reports')}
-                          {renderSecondaryRow('policy', reqValue, reqCount, reqLabels, 'Pet Requirements', 'No requirements reports')}
-                        </>
-                      );
-                    })()}
+                        return (
+                          <>
+                            {renderDetailListItem('price', dbPlace.price_range, dbPlace.price_range_agreeing_devices, priceRangeLabels, 'Price Range', 'No price reports', priceIcon)}
+                            {renderDetailListItem('menu', dbPlace.pet_menu, dbPlace.pet_menu_agreeing_devices, petMenuLabels, 'Pet Menu', 'No pet menu reports', menuIcon)}
+                            {renderDetailListItem('policy', reqValue, reqCount, reqLabels, 'Pet Requirements', 'No requirements reports', reqIcon)}
+                          </>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
               );
