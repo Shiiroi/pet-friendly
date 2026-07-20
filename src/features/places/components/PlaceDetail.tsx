@@ -65,7 +65,6 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
     diaper: 'Diapers',
     caged: 'Caged',
     stroller: 'Stroller/Carrier',
-    other: 'Custom Requirements',
   };
 
   const claimColors: Record<string, string> = {
@@ -324,7 +323,6 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                           });
 
                           const predefinedCounts: Record<string, number> = {};
-                          const customCounts: Record<string, number> = {};
 
                           uniqueReports.forEach((r) => {
                             if (!r.notes) return;
@@ -332,25 +330,19 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                             parts.forEach((part) => {
                               if (part === 'diaper' || part === 'caged' || part === 'stroller') {
                                 predefinedCounts[part] = (predefinedCounts[part] || 0) + 1;
-                              } else if (part.startsWith('other:')) {
-                                const text = part.substring(6).trim();
-                                if (text) {
-                                  customCounts[text] = (customCounts[text] || 0) + 1;
-                                }
                               } else if (part && part !== 'none') {
-                                customCounts[part] = (customCounts[part] || 0) + 1;
+                                // ignore unknown/legacy values silently
                               }
                             });
                           });
 
                           return {
                             predefined: Object.entries(predefinedCounts).map(([key, count]) => ({ key, count })),
-                            custom: Object.entries(customCounts).map(([text, count]) => ({ text, count })),
                           };
                         };
 
                         const reqData = getRequirementsList();
-                        const hasReqs = reqData.predefined.length > 0 || reqData.custom.length > 0;
+                        const hasReqs = reqData.predefined.length > 0;
 
                         return (
                           <>
@@ -401,24 +393,6 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                                       {reqLabels[key] ?? key} ({count})
                                     </span>
                                   ))}
-                                  {reqData.custom.map(({ text, count }) => (
-                                    <span
-                                      key={text}
-                                      style={{
-                                        fontSize: '10px',
-                                        color: theme.colors.textMuted,
-                                        backgroundColor: '#fafafa',
-                                        padding: '3px 8px',
-                                        borderRadius: '4px',
-                                        fontWeight: 500,
-                                        border: `1px dashed ${theme.colors.unconfirmed}`,
-                                        fontStyle: 'italic',
-                                        textAlign: 'left',
-                                      }}
-                                    >
-                                      {text} ({count})
-                                    </span>
-                                  ))}
                                 </div>
                               ) : null}
                             </StatusCard>
@@ -463,7 +437,6 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
 
                     // Parse requirements note
                     const reqLabelsList: string[] = [];
-                    let customNote = '';
 
                     if (report.notes) {
                       const parts = report.notes.split(',').map((p) => p.trim());
@@ -476,11 +449,8 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                           reqLabelsList.push('Stroller/Carrier');
                         } else if (part === 'none') {
                           reqLabelsList.push('None (Free Roam)');
-                        } else if (part.startsWith('other: ')) {
-                          customNote = part.substring(7);
-                        } else if (part) {
-                          customNote = part;
                         }
+                        // other: prefix and unknown values are silently ignored
                       });
                     }
 
@@ -522,10 +492,8 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                         </div>
                         {/* Requirement pills — each requirement gets its own badge.
                           * WHY: jamming comma-separated values into one badge loses readability
-                          * and makes it impossible to visually distinguish individual requirements.
-                          * Custom 'other' entries get dashed border to signal they are
-                          * arbitrary user text (not a vetted predefined option). */}
-                        {(reqLabelsList.length > 0 || customNote) && (
+                          * and makes it impossible to visually distinguish individual requirements. */}
+                        {reqLabelsList.length > 0 && (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', marginBottom: '6px' }}>
                             {reqLabelsList.map((label) => (
                               <span
@@ -543,22 +511,6 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                                 Req: {label}
                               </span>
                             ))}
-                            {customNote && (
-                              <span
-                                style={{
-                                  fontSize: '10px',
-                                  color: theme.colors.textMuted,
-                                  backgroundColor: '#fafafa',
-                                  padding: '3px 8px',
-                                  borderRadius: '4px',
-                                  fontWeight: 500,
-                                  border: `1px dashed ${theme.colors.unconfirmed}`,
-                                  fontStyle: 'italic',
-                                }}
-                              >
-                                {customNote}
-                              </span>
-                            )}
                           </div>
                         )}
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>

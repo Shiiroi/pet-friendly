@@ -30,8 +30,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   const [reqDiaper, setReqDiaper] = useState(true);
   const [reqCaged, setReqCaged] = useState(false);
   const [reqStroller, setReqStroller] = useState(false);
-  const [reqOther, setReqOther] = useState(false);
-  const [otherRequirements, setOtherRequirements] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -44,20 +43,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     if (reqDiaper) reqs.push('diaper');
     if (reqCaged) reqs.push('caged');
     if (reqStroller) reqs.push('stroller');
-    if (reqOther) {
-      const trimmed = otherRequirements.trim();
-      if (!trimmed) {
-        setErrorMsg('Please specify your custom pet requirements.');
-        setIsSubmitting(false);
-        return;
-      }
-      if (trimmed.length > 100) {
-        setErrorMsg('Custom requirements must be less than 100 characters.');
-        setIsSubmitting(false);
-        return;
-      }
-      reqs.push(`other: ${trimmed}`);
-    }
+
     const formattedRequirements = reqs.join(', ');
 
     // Map UI petMenu 'unsure' to database value 'not_sure'
@@ -274,7 +260,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
           <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '14px' }}>
             Pet Requirements (Select all that apply)
           </label>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: reqOther ? '12px' : '0' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
               <input
                 type="checkbox"
@@ -299,41 +285,9 @@ export const ReportForm: React.FC<ReportFormProps> = ({
               />
               Stroller / Carrier
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-              <input
-                type="checkbox"
-                checked={reqOther}
-                onChange={(e) => setReqOther(e.target.checked)}
-              />
-              Other (Specify)
-            </label>
           </div>
 
-          {reqOther && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <textarea
-                value={otherRequirements}
-                onChange={(e) => setOtherRequirements(e.target.value)}
-                placeholder="e.g. Medium dogs allowed in outdoor area only..."
-                maxLength={100}
-                rows={2}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: '1px solid #ccc',
-                  backgroundColor: '#ffffff',
-                  color: '#000000',
-                  fontSize: '14px',
-                  boxSizing: 'border-box',
-                  resize: 'vertical',
-                }}
-              />
-              <span style={{ fontSize: '11px', color: '#6b7280', alignSelf: 'flex-end' }}>
-                {otherRequirements.length}/100 characters max
-              </span>
-            </div>
-          )}
+
         </div>
 
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
