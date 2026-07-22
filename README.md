@@ -66,4 +66,4 @@ Compaws uses a local-first architecture to handle offline reports and poor cellu
 
 ## Writing Style Guide
 
-Consult [docs/writing-style.md](file:///Users/vince/personal-projects/pet-friendly/pet-friendly-ph/docs/writing-style.md) when writing documentation or code comments for this repository.
+Consult [.agents/skills/ste-lite-docs/SKILL.md](file:///Users/vince/personal-projects/pet-friendly/pet-friendly-ph/.agents/skills/ste-lite-docs/SKILL.md) when writing documentation or code comments for this repository.
