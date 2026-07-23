@@ -12,7 +12,7 @@ export interface PlaceInBounds {
   city: string | null;
   latitude: number;
   longitude: number;
-  category: string;
+  categories: string[];
   status: string;
   claim: 'allowed' | 'not_allowed' | 'outdoor_only' | null;
   agreeing_devices: number;

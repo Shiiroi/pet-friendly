@@ -79,7 +79,7 @@ export function useOutboxSync() {
             p_address: entry.payload.p_address,
             p_city: entry.payload.p_city,
             p_province: entry.payload.p_province,
-            p_category: entry.payload.p_category,
+            p_categories: entry.payload.p_categories || (entry.payload.p_category ? [entry.payload.p_category] : []),
             p_latitude: entry.payload.p_latitude,
             p_longitude: entry.payload.p_longitude,
             p_device_id: entry.payload.p_device_id,

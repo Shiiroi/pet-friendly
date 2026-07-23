@@ -147,7 +147,7 @@ export type Database = {
       places: {
         Row: {
           address: string | null
-          category: string | null
+          categories: string[]
           city: string | null
           created_at: string
           created_by_device_id: string | null
@@ -160,7 +160,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
-          category?: string | null
+          categories?: string[]
           city?: string | null
           created_at?: string
           created_by_device_id?: string | null
@@ -173,7 +173,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
-          category?: string | null
+          categories?: string[]
           city?: string | null
           created_at?: string
           created_by_device_id?: string | null
@@ -428,7 +428,7 @@ export type Database = {
       create_place_with_report: {
         Args: {
           p_address: string
-          p_category: string
+          p_categories: string[]
           p_city: string
           p_claim: string
           p_device_id: string
@@ -581,7 +581,7 @@ export type Database = {
         Returns: {
           address: string
           agreeing_devices: number
-          category: string
+          categories: string[]
           city: string
           claim: string
           id: string

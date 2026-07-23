@@ -97,24 +97,65 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
         boxSizing: 'border-box',
       }}
     >
-      {/* Category Tag & Close button row */}
-      <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '12px' }}>
-        <span
-          style={{
-            fontSize: '10px',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '1px',
-            backgroundColor: theme.colors.softPink,
-            padding: '4px 10px',
-            borderRadius: '8px',
-            color: theme.colors.terracotta,
-            fontFamily: theme.fonts.heading,
-            display: 'inline-block',
-          }}
-        >
-          {isGhost ? 'Untracked Spot' : (dbPlace?.category || 'General')}
-        </span>
+      {/* Category Tags & Close button row */}
+      <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '12px', minHeight: '32px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center', paddingRight: '36px', paddingLeft: '36px' }}>
+          {isGhost ? (
+            <span
+              style={{
+                fontSize: '10px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                backgroundColor: theme.colors.softPink,
+                padding: '4px 10px',
+                borderRadius: '8px',
+                color: theme.colors.terracotta,
+                fontFamily: theme.fonts.heading,
+                display: 'inline-block',
+              }}
+            >
+              Untracked Spot
+            </span>
+          ) : dbPlace?.categories && dbPlace.categories.length > 0 ? (
+            dbPlace.categories.map((cat) => (
+              <span
+                key={cat}
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  backgroundColor: theme.colors.softPink,
+                  padding: '4px 10px',
+                  borderRadius: '8px',
+                  color: theme.colors.terracotta,
+                  fontFamily: theme.fonts.heading,
+                  display: 'inline-block',
+                }}
+              >
+                {cat}
+              </span>
+            ))
+          ) : (
+            <span
+              style={{
+                fontSize: '10px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                backgroundColor: theme.colors.softPink,
+                padding: '4px 10px',
+                borderRadius: '8px',
+                color: theme.colors.terracotta,
+                fontFamily: theme.fonts.heading,
+                display: 'inline-block',
+              }}
+            >
+              General
+            </span>
+          )}
+        </div>
         <button
           onClick={onClose}
           aria-label="Close panel"

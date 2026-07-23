@@ -40,7 +40,7 @@ export async function getPlacesInBounds(
     city: row.city || null,
     latitude: row.latitude,
     longitude: row.longitude,
-    category: row.category || '',
+    categories: row.categories || [],
     status: row.status,
     claim: (row.claim as PlaceInBounds['claim']) || null,
     agreeing_devices: row.agreeing_devices,
