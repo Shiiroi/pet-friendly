@@ -97,24 +97,65 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
         boxSizing: 'border-box',
       }}
     >
-      {/* Category Tag & Close button row */}
-      <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '12px' }}>
-        <span
-          style={{
-            fontSize: '10px',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '1px',
-            backgroundColor: theme.colors.softPink,
-            padding: '4px 10px',
-            borderRadius: '8px',
-            color: theme.colors.terracotta,
-            fontFamily: theme.fonts.heading,
-            display: 'inline-block',
-          }}
-        >
-          {isGhost ? 'Untracked Spot' : (dbPlace?.category || 'General')}
-        </span>
+      {/* Category Tags & Close button row */}
+      <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '12px', minHeight: '32px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center', paddingRight: '36px', paddingLeft: '36px' }}>
+          {isGhost ? (
+            <span
+              style={{
+                fontSize: '10px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                backgroundColor: theme.colors.softPink,
+                padding: '4px 10px',
+                borderRadius: '8px',
+                color: theme.colors.terracotta,
+                fontFamily: theme.fonts.heading,
+                display: 'inline-block',
+              }}
+            >
+              Untracked Spot
+            </span>
+          ) : dbPlace?.categories && dbPlace.categories.length > 0 ? (
+            dbPlace.categories.map((cat) => (
+              <span
+                key={cat}
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  backgroundColor: theme.colors.softPink,
+                  padding: '4px 10px',
+                  borderRadius: '8px',
+                  color: theme.colors.terracotta,
+                  fontFamily: theme.fonts.heading,
+                  display: 'inline-block',
+                }}
+              >
+                {cat}
+              </span>
+            ))
+          ) : (
+            <span
+              style={{
+                fontSize: '10px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                backgroundColor: theme.colors.softPink,
+                padding: '4px 10px',
+                borderRadius: '8px',
+                color: theme.colors.terracotta,
+                fontFamily: theme.fonts.heading,
+                display: 'inline-block',
+              }}
+            >
+              General
+            </span>
+          )}
+        </div>
         <button
           onClick={onClose}
           aria-label="Close panel"
@@ -215,9 +256,7 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
               const policyConfirmed = dbPlace.agreeing_devices >= 2 && dbPlace.claim !== null && !policyDisputed;
               const policyStyle = getConfidenceStyle('policy', dbPlace.claim, dbPlace.agreeing_devices, dbPlace.runner_up_agreeing_devices);
 
-              // WHY NAMED CONFLICT LABEL:
-              // A plain "Policy: Allowed" would be actively misleading when the vote is close.
-              // Naming both options lets the reader understand why they see ⚠️ rather than a normal label.
+              // Format conflict label when vote counts are close
               const policyLabel = policyDisputed && dbPlace.claim && dbPlace.runner_up_claim
                 ? `${claimLabels[dbPlace.claim]} vs ${claimLabels[dbPlace.runner_up_claim]}`
                 : (dbPlace.claim ? claimLabels[dbPlace.claim] : 'No policy reports');
@@ -520,9 +559,7 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                             </span>
                           )}
                         </div>
-                        {/* Requirement pills — each requirement gets its own badge.
-                          * WHY: jamming comma-separated values into one badge loses readability
-                          * and makes it impossible to visually distinguish individual requirements. */}
+                        {/* Requirement pills — render individual requirement badges */}
                         {reqLabelsList.length > 0 && (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', marginBottom: '6px' }}>
                             {reqLabelsList.map((label) => (

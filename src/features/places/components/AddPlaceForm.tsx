@@ -23,15 +23,6 @@ interface SelectedSearch {
 
 /**
  * Form to register a new pet-friendly place and submit its initial policy report.
- * 
- * WHY GPS COORDINATES ARE PRIMARY:
- * - We acquire the device's live coordinates (via HTML5 Geolocation API) rather than
- *   querying Google Place Details coordinates. This ensures that the user is physically
- *   on-site when seeding the place, saving Google API details query bills.
- * 
- * WHY GOOGLE IS FALLBACK:
- * - If the device's GPS fails or is blocked, and VITE_ENFORCE_GEOFENCE is false, we
- *   fall back to geocoding or lazy-fetching the place's coordinates from Google.
  */
 /**
  * Helper to parse and extract the city candidate from a Google formatted address string.
@@ -75,7 +66,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
     return '';
   });
 
-  const [category, setCategory] = useState('Café');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['Café']);
   const [claim, setClaim] = useState<'allowed' | 'not_allowed' | 'outdoor_only'>('allowed');
   const [petMenu, setPetMenu] = useState<'yes' | 'no' | 'unsure'>('unsure');
   const [priceRange, setPriceRange] = useState<'budget' | 'mid' | 'splurge'>('mid');
@@ -87,6 +78,16 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const categories = ['Café', 'Restaurant', 'Park', 'Mall', 'Hotel', 'Shop', 'Other'];
+
+  const toggleCategory = (cat: string) => {
+    setSelectedCategories((prev) => {
+      if (prev.includes(cat)) {
+        if (prev.length === 1) return prev; // keep at least 1 tag selected
+        return prev.filter((c) => c !== cat);
+      }
+      return [...prev, cat];
+    });
+  };
 
   const handleSelectSearch = (lat: number, lng: number, name: string, address: string) => {
     setSelectedPlace({ id: `custom-${uuidv4()}`, name, address, lat, lng });
@@ -145,7 +146,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
         p_address: selectedPlace.address,
         p_city: city.trim(),
         p_province: '',
-        p_category: category,
+        p_categories: selectedCategories,
         p_latitude: resolvedLat,
         p_longitude: resolvedLng,
         p_device_id: getDeviceId(),
@@ -177,7 +178,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             p_address: selectedPlace.address,
             p_city: city.trim(),
             p_province: '',
-            p_category: category,
+            p_categories: selectedCategories,
             p_latitude: resolvedLat,
             p_longitude: resolvedLng,
             p_device_id: getDeviceId(),
@@ -348,30 +349,35 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
                 }}
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#4b5563', marginBottom: '4px' }}>
-                Category *
+            <div style={{ width: '100%', marginTop: '12px' }}>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#4b5563', marginBottom: '6px' }}>
+                Categories / Tags * (Select all that apply)
               </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: '1px solid #ccc',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                  fontSize: '14px',
-                  boxSizing: 'border-box',
-                }}
-              >
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {categories.map((cat) => {
+                  const isSelected = selectedCategories.includes(cat);
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => toggleCategory(cat)}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '20px',
+                        border: isSelected ? '1.5px solid #e07a5f' : '1px solid #d1d5db',
+                        backgroundColor: isSelected ? '#fdf0ed' : '#ffffff',
+                        color: isSelected ? '#e07a5f' : '#4b5563',
+                        fontWeight: isSelected ? 700 : 500,
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {isSelected ? '✓ ' : '+ '}{cat}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -399,16 +405,6 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
                   onChange={() => setClaim('outdoor_only')}
                 />
                 Outdoor Only (Al fresco only)
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                <input
-                  type="radio"
-                  name="claim"
-                  value="not_allowed"
-                  checked={claim === 'not_allowed'}
-                  onChange={() => setClaim('not_allowed')}
-                />
-                Not Allowed (Pets restricted)
               </label>
             </div>
           </div>

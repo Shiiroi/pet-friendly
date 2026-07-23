@@ -4,9 +4,7 @@ import { type ReportItem } from '../../../shared/types/geo';
 /**
  * Fetches historical policy reports submitted for a specific place.
  * 
- * WHY WE QUERY DIRECTLY:
- * We pull raw historical reports from `pet_policy_reports` to build the place detail timeline,
- * showing notes and submit dates, while the parent place maps the pre-calculated consensus summary.
+ * Queries raw reports from pet_policy_reports to build the detail timeline.
  * 
  * @param {string} placeId - The place UUID.
  * @returns {Promise<ReportItem[]>} Array of reports sorted from newest to oldest.

@@ -13,10 +13,6 @@ interface ReportFormProps {
 
 /**
  * Report form component for suggesting correction or confirming a pet policy.
- * 
- * WHY GEOFENCING & OUTBOX CAVEAT:
- * Proximity checks require active GPS. If the user is offline, we save the payload
- * to IndexedDB, to be synced when internet connectivity returns.
  */
 export const ReportForm: React.FC<ReportFormProps> = ({
   place,
@@ -166,16 +162,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 onChange={() => setClaim('outdoor_only')}
               />
               Outdoor Only (Pets allowed in al fresco areas only)
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-              <input
-                type="radio"
-                name="claim"
-                value="not_allowed"
-                checked={claim === 'not_allowed'}
-                onChange={() => setClaim('not_allowed')}
-              />
-              Not Allowed (No pets permitted at all)
             </label>
           </div>
         </div>

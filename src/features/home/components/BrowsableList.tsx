@@ -13,11 +13,6 @@ interface BrowsableListProps {
 
 /**
  * Renders a browsable, filterable, and sortable directory list of places.
- * 
- * WHY CLIENT-SIDE SORTING/FILTERING:
- * Since place lists are bound to map view envelopes which are lightweight,
- * processing filters and sorting relative to GPS coordinates in-memory on the client
- * offers instant, sub-millisecond responsive layout updates.
  */
 export const BrowsableList: React.FC<BrowsableListProps> = ({
   places,
@@ -37,7 +32,7 @@ export const BrowsableList: React.FC<BrowsableListProps> = ({
 
   // Compute unique filter lists from active bounds dataset
   const cities = Array.from(new Set(places.map((p) => p.city).filter(Boolean))) as string[];
-  const categories = Array.from(new Set(places.map((p) => p.category).filter(Boolean))) as string[];
+  const categories = Array.from(new Set(places.flatMap((p) => p.categories || []).filter(Boolean))) as string[];
 
   /**
    * Helper utilizing the Haversine formula to compute geodesic distance in kilometers.
@@ -59,7 +54,7 @@ export const BrowsableList: React.FC<BrowsableListProps> = ({
 
   const filtered = places.filter((p) => {
     const cityMatch = !selectedCity || p.city === selectedCity;
-    const catMatch = !selectedCategory || p.category === selectedCategory;
+    const catMatch = !selectedCategory || (p.categories && p.categories.includes(selectedCategory));
     return cityMatch && catMatch;
   });
 
@@ -247,19 +242,40 @@ export const BrowsableList: React.FC<BrowsableListProps> = ({
                 >
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          backgroundColor: theme.colors.softPink,
-                          color: theme.colors.terracotta,
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                        }}
-                      >
-                        {place.category || 'General'}
-                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {place.categories && place.categories.length > 0 ? (
+                          place.categories.map((cat) => (
+                            <span
+                              key={cat}
+                              style={{
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                backgroundColor: theme.colors.softPink,
+                                color: theme.colors.terracotta,
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                              }}
+                            >
+                              {cat}
+                            </span>
+                          ))
+                        ) : (
+                          <span
+                            style={{
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              backgroundColor: theme.colors.softPink,
+                              color: theme.colors.terracotta,
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                            }}
+                          >
+                            General
+                          </span>
+                        )}
+                      </div>
                       {userCoords && dist !== Infinity && (
                         <span style={{ fontSize: '11px', color: theme.colors.textMuted }}>
                           {dist.toFixed(1)} km away

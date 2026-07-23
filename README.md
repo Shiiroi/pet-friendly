@@ -1,4 +1,4 @@
-# Compaws (pet-friendly-ph)
+# Compaws
 
 Compaws tracks pet-friendly places in the Philippines through crowdsourced community reports.
 
@@ -26,7 +26,7 @@ Compaws tracks pet-friendly places in the Philippines through crowdsourced commu
    cp .env.example .env
    ```
 
-4. Populate `.env` with your Supabase credentials:
+4. Add your Supabase credentials to `.env`:
    ```env
    VITE_SUPABASE_URL=https://your-project.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-key
@@ -54,12 +54,12 @@ Compaws tracks pet-friendly places in the Philippines through crowdsourced commu
 
 ## Architecture Overview
 
-Compaws uses a local-first architecture to handle offline reports and poor cellular connectivity.
+Compaws uses a local-first architecture to handle offline reports and low network connectivity.
 
 ### Core Components
 
 - **Frontend Application**: Built with React, TypeScript, and Vite.
-- **Service Worker**: Caches CARTO map tiles using a CacheFirst strategy. Serves API queries using a NetworkFirst strategy.
-- **IndexedDB Outbox**: Stores pending reports on the device while offline. Flushes queued records to Supabase when network connection restores.
+- **Service Worker**: Caches CARTO map tiles with a CacheFirst strategy. Serves API queries with a NetworkFirst strategy.
+- **IndexedDB Outbox**: If the device is offline, stores pending reports on the device. When the network connection restores, flushes queued records to Supabase.
 - **Geofence Validation**: Verifies device GPS coordinates against place coordinates before accepting contributions.
-- **Supabase Backend**: Manages place data, report summaries, and consensus calculations using PostgreSQL views and functions.
+- **Supabase Backend**: Manages place data, report summaries, and consensus calculations with PostgreSQL views and functions.

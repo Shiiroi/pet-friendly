@@ -11,10 +11,6 @@ interface FlagButtonProps {
 
 /**
  * Flag button and dropdown component for reporting review issues (spam, closure, duplicates).
- * 
- * WHY GEOFENCING GATES:
- * Avoids remote flagging spam by verifying that the device is located in close proximity (300m)
- * to the reported place before submitting.
  */
 export const FlagButton: React.FC<FlagButtonProps> = ({
   place,

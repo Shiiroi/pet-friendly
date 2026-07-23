@@ -11,12 +11,7 @@ interface NicknamePromptProps {
 }
 
 /**
- * Renders a post-submission dialog prompting first-time contributors
- * to associate an optional display name/nickname with their device.
- * 
- * WHY IS THIS OPTIONAL:
- * - Maintains our low-barrier, no-login anonymous design philosophy.
- * - Saves progress silently if dismissed without blocking the user.
+ * Renders a dialog prompting contributors to associate a nickname with their device.
  */
 export const NicknamePrompt: React.FC<NicknamePromptProps> = ({
   isOpen,
