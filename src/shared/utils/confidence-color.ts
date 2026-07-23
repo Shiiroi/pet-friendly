@@ -2,12 +2,7 @@ import { theme } from '../styles/theme';
 
 export interface ConfidenceStyle {
   backgroundColor: string;
-  /** Color used for the icon container and status badge text/background. On solid confirmed
-   * styles this is white (for contrast on the colored background). On unconfirmed (dashed/outlined)
-   * styles this is a muted color. */
   textColor: string;
-  /** Color for the VALUE text in the list row. Separate from textColor because the value
-   * sits on a *white card* background, so we want an accent color rather than white. */
   valueTextColor: string;
   borderColor: string;
   isSolid: boolean;
@@ -15,14 +10,7 @@ export interface ConfidenceStyle {
 }
 
 /**
- * Returns consistent styling configurations for badges and map pins based on confidence levels.
- *
- * Centralization rationale:
- * - Prevents visual discrepancies between map pins and detail badges.
- *
- * Color selection rationale:
- * - `textColor`: Applied when text sits directly on a colored background (white for solid badges, accent color for unconfirmed).
- * - `valueTextColor`: Applied when text sits on a white card background (always uses accent color for readability).
+ * Returns styling configurations for badges and map pins based on confidence levels.
  */
 export function getConfidenceStyle(
   valueType: 'policy' | 'price' | 'menu' | 'req',
@@ -34,7 +22,7 @@ export function getConfidenceStyle(
                      (agreeingDevices - runnerUpAgreeingDevices) <= 1;
 
   if (isDisputed && value !== null) {
-    const color = '#d97706'; // Amber warning color
+    const color = '#d97706';
     return {
       backgroundColor: '#fffbeb',
       textColor: color,
@@ -51,7 +39,7 @@ export function getConfidenceStyle(
     if (valueType === 'policy') {
       if (value === 'allowed') {
         return {
-          backgroundColor: theme.colors.allowed, // Sage Green
+          backgroundColor: theme.colors.allowed,
           textColor: '#ffffff',
           valueTextColor: theme.colors.allowed,
           borderColor: theme.colors.allowed,
@@ -61,7 +49,7 @@ export function getConfidenceStyle(
       }
       if (value === 'not_allowed') {
         return {
-          backgroundColor: theme.colors.notAllowed, // Coral Red
+          backgroundColor: theme.colors.notAllowed,
           textColor: '#ffffff',
           valueTextColor: theme.colors.notAllowed,
           borderColor: theme.colors.notAllowed,
@@ -69,7 +57,6 @@ export function getConfidenceStyle(
           borderStyle: 'solid',
         };
       }
-      // outdoor_only intentionally falls through to unconfirmed visual treatment
     } else if (valueType === 'menu') {
       if (value === 'yes') {
         const color = '#059669';
@@ -92,7 +79,6 @@ export function getConfidenceStyle(
           borderStyle: 'solid',
         };
       }
-      // not_sure falls through to unconfirmed
     } else if (valueType === 'price') {
       if (value === 'budget') {
         const color = '#059669';
@@ -127,29 +113,28 @@ export function getConfidenceStyle(
         };
       }
     } else if (valueType === 'req') {
-      // Requirements always use a neutral green pill.
-      // Rationale: Requirements state objective rules (such as diapers or strollers) rather than quality ratings.
+      // Format requirement badges with neutral green styling
       const color = '#059669';
       return {
-        backgroundColor: '#f0fdf4', // light green tint for icon box
+        backgroundColor: '#f0fdf4',
         textColor: color,
         valueTextColor: theme.colors.textDark,
         borderColor: color,
-        isSolid: false, // use solid neutral, not bright fill
+        isSolid: false,
         borderStyle: 'solid',
       };
     }
   }
 
-  // Unconfirmed / null value / outdoor_only (always outlined)
-  let color = theme.colors.unconfirmed; // muted gray (#9CA3AF)
+  // Format unconfirmed, null, or outdoor_only items with outlined styling
+  let color = theme.colors.unconfirmed;
 
   if (value === 'outdoor_only') {
     color = theme.colors.outdoorOnly;
   }
 
   return {
-    backgroundColor: value ? '#f8fafc' : '#ffffff', // very slight tint when pending, white when empty
+    backgroundColor: value ? '#f8fafc' : '#ffffff',
     textColor: color,
     valueTextColor: value ? color : theme.colors.textMuted,
     borderColor: color,

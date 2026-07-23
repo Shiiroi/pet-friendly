@@ -20,37 +20,29 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// ============================================================================
-// CacheFirst strategy for CARTO Positron map tiles (basemaps.cartocdn.com)
-// Rationale: Map tiles for specific coordinates and zoom levels remain static.
-// Serving map tiles from cache provides instant offline panning and zooming.
-// ============================================================================
+// Cache CARTO map tiles with CacheFirst strategy for offline panning
 registerRoute(
   ({ url }) => url.origin === 'https://basemaps.cartocdn.com',
   new CacheFirst({
     cacheName: 'carto-map-tiles',
     plugins: [
       new CacheableResponsePlugin({
-        statuses: [0, 200], // Allow opaque responses (CORS) to be cached
+        statuses: [0, 200],
       }),
       new ExpirationPlugin({
-        maxEntries: 500, // Bound cache size to prevent disk bloat
-        maxAgeSeconds: 30 * 24 * 60 * 60, // Keep tiles cached for 30 days
+        maxEntries: 500,
+        maxAgeSeconds: 30 * 24 * 60 * 60,
       }),
     ],
   })
 );
 
-// ============================================================================
-// NetworkFirst strategy for Supabase REST queries (supabase.co)
-// Rationale: Place details and reports change frequently.
-// NetworkFirst fetches fresh data online and falls back to cached data after a 4-second timeout.
-// ============================================================================
+// Fetch fresh Supabase data with NetworkFirst strategy and fall back to cache
 registerRoute(
   ({ url }) => url.origin.includes('supabase.co') && url.pathname.includes('/rest/v1/'),
   new NetworkFirst({
     cacheName: 'supabase-rest-cache',
-    networkTimeoutSeconds: 4, // Failover quickly to cache if connection is slow
+    networkTimeoutSeconds: 4,
     plugins: [
       new CacheableResponsePlugin({
         statuses: [200],

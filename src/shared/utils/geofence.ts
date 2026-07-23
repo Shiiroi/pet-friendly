@@ -2,8 +2,6 @@ import { env } from '../../config/env';
 
 /**
  * Defines the maximum allowed distance in meters between a device and a place.
- * 
- * Rationale: 300 meters accommodates urban GPS drift while confirming on-site presence.
  */
 export const GEOFENCE_RADIUS_METERS = 300;
 
@@ -17,10 +15,7 @@ export class GeolocationError extends Error {
 }
 
 /**
- * Retrieves current device GPS coordinates using the HTML5 Geolocation API.
- * Wraps browser errors with clear user-facing messages.
- * 
- * @returns {Promise<{ latitude: number; longitude: number }>} Device coordinates.
+ * Retrieves current device GPS coordinates with the HTML5 Geolocation API.
  */
 export function getCurrentPosition(): Promise<{ latitude: number; longitude: number }> {
   return new Promise((resolve, reject) => {
@@ -55,10 +50,7 @@ export function getCurrentPosition(): Promise<{ latitude: number; longitude: num
 }
 
 /**
- * Calculates geodesic distance between two coordinate pairs using the Haversine formula.
- * Returns true if the distance does not exceed the target radius.
- * 
- * @returns {boolean} True if coordinates fall within the specified radius.
+ * Calculates distance between two coordinate pairs with the Haversine formula.
  */
 export function isWithinRadius(
   targetLat: number,
@@ -83,13 +75,7 @@ export function isWithinRadius(
 }
 
 /**
- * Verifies that the device is physically located near the target place.
- * 
- * Geofencing rationale:
- * - Prevents remote spam reports by requiring on-site presence.
- * 
- * Dev toggle behavior (VITE_ENFORCE_GEOFENCE):
- * - If set to false, logs a warning and returns true to support local testing.
+ * Verifies that the device is located near the target place.
  */
 export async function checkGeofence(
   targetLat: number,

@@ -296,10 +296,8 @@ export const MapView: React.FC<MapViewProps> = ({
       }}
     >
       {/* 
-        WHY THE CSS FILTER:
-        Applies a subtle warm sepia and saturation tint to pull the grayscale basemap
-        toward our cutesy cream/pink brand palette. If road/city names become hard to read,
-        dial the sepia or saturate percentage down instead of removing it completely.
+        Applies a warm sepia and saturation tint to match the brand palette.
+        If road names become difficult to read, adjust the sepia or saturation percentage.
       */}
       <style>{`
         .map-container .leaflet-tile-pane {
@@ -314,11 +312,8 @@ export const MapView: React.FC<MapViewProps> = ({
         style={{ width: '100%', height: '100%', zIndex: 1 }}
       >
         {/*
-          WHY CARTO POSITRON:
-          CARTO Positron is an extremely light, clean basemap that minimizes visual road/highway noise,
-          making our custom pink paw markers stand out as clear focal points.
-          We choose this over CARTO Voyager because Voyager is too colorful/busy and clashes
-          with our custom pink-and-white theme.
+          CARTO Positron provides a clean basemap that minimizes visual noise.
+          This light background highlights custom place markers clearly.
         */}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'

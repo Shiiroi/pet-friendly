@@ -4,15 +4,7 @@ import { getPendingReports, deletePendingReport, type PendingReport } from './ou
 import { getDeviceId } from '../utils/device-id';
 
 /**
- * Monitors network connection state. Automatically pushes queued offline reports from IndexedDB to Supabase when network connectivity recovers.
- * 
- * Visibility state fallback rationale:
- * - Mobile browsers suspend timers and network listeners when tabs run in the background.
- * - Listening to the `visibilitychange` event ensures queued uploads flush when the tab returns to the foreground.
- * 
- * Abort-on-error iteration rationale:
- * - Processes pending outbox records from oldest to newest.
- * - If a transport error occurs, halts synchronization immediately to avoid hammering the database connection.
+ * Pushes queued offline reports from IndexedDB to Supabase when network connectivity recovers.
  */
 export function useOutboxSync() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -30,7 +22,7 @@ export function useOutboxSync() {
       return;
     }
 
-    // Keep only unsynced items and sort oldest-first to preserve logical timeline history
+    // Sort unsynced items from oldest to newest to preserve timeline order
     const unsynced = pending
       .filter((item) => !item.synced)
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
@@ -42,8 +34,7 @@ export function useOutboxSync() {
     setIsSyncing(true);
     setSyncStatus(`Syncing ${unsynced.length} pending report${unsynced.length > 1 ? 's' : ''}... 🐾`);
 
-    // Ensure the device is registered in the database before replaying contributions.
-    // This prevents 409 foreign key violations if the device ID was generated while offline.
+    // Register device ID in Supabase before uploading reports to prevent foreign key errors
     try {
       const deviceId = getDeviceId();
       const { error: deviceError } = await supabase
@@ -69,7 +60,7 @@ export function useOutboxSync() {
       try {
         let error: any = null;
 
-        // Route the replay payload to its respective API controller endpoint
+        // Route payload to target API endpoint
         if (entry.type === 'report') {
           const res = await supabase.from('pet_policy_reports').insert(entry.payload);
           error = res.error;
@@ -96,19 +87,19 @@ export function useOutboxSync() {
 
         if (error) {
           console.error(`[Outbox Sync] Failed to sync report ${entry.id}:`, error);
-          break; // Stop immediately; retry on the next online/visibility trigger
+          break; // Stop immediately on error to retry during next sync cycle
         }
 
-        // Clean up database storage immediately on success
+        // Remove synced item from local IndexedDB
         await deletePendingReport(entry.id);
         succeededCount++;
       } catch (err) {
         console.error(`[Outbox Sync] Exception thrown replaying report ${entry.id}:`, err);
-        break; // Stop and retry next cycle
+        break; // Stop execution on error
       }
     }
 
-    // Display status update briefly to provide visual assurance to the user
+    // Display temporary success status message
     if (succeededCount > 0) {
       setSyncStatus(`All synced ✓ (${succeededCount} contribution${succeededCount > 1 ? 's' : ''} uploaded)`);
       setTimeout(() => {
@@ -140,7 +131,7 @@ export function useOutboxSync() {
     window.addEventListener('offline', handleOffline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Run immediately on startup to clear anything cached in previous browser sessions
+    // Flush outbox on application startup when online
     if (navigator.onLine) {
       flushOutbox();
     }
