@@ -254,8 +254,8 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
       {/* Place search lookup */}
       {!selectedPlace ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: '180px' }}>
-          <div style={{ position: 'relative', height: '100px' }}>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '14px' }}>
+          <div style={{ position: 'relative', height: '110px' }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '16px', fontSize: '14px' }}>
               Find the place using Google Search:
             </label>
             <PlaceSearchBar
@@ -265,7 +265,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
             <button
               type="button"
               onClick={onClose}
@@ -287,7 +287,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
       ) : (
         /* Form content prefilled once place is selected */
         <form onSubmit={handleSubmit}>
-          {/* Row 1: Name and Address */}
+          {/* Row 1: Place Name and City */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '12px' }}>
             <div>
               <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
@@ -310,29 +310,6 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             </div>
 
             <div>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                Address
-              </label>
-              <input
-                type="text"
-                value={selectedPlace.address}
-                disabled
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: '1px solid #ddd',
-                  backgroundColor: '#f3f4f6',
-                  fontSize: '14px',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Row 2: City and Categories */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '16px', marginBottom: '16px', alignItems: 'flex-start' }}>
-            <div style={{ minWidth: '160px' }}>
               <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#4b5563', marginBottom: '4px' }}>
                 City *
               </label>
@@ -342,35 +319,58 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
                 placeholder="e.g. Quezon City"
               />
             </div>
-            <div>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#4b5563', marginBottom: '6px' }}>
-                Categories / Tags * (Select all that apply)
-              </label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {categories.map((cat) => {
-                  const isSelected = selectedCategories.includes(cat);
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => toggleCategory(cat)}
-                      style={{
-                        padding: '6px 14px',
-                        borderRadius: '20px',
-                        border: isSelected ? '1.5px solid #e07a5f' : '1px solid #d1d5db',
-                        backgroundColor: isSelected ? '#fdf0ed' : '#ffffff',
-                        color: isSelected ? '#e07a5f' : '#4b5563',
-                        fontWeight: isSelected ? 700 : 500,
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      {isSelected ? '✓ ' : '+ '}{cat}
-                    </button>
-                  );
-                })}
-              </div>
+          </div>
+
+          {/* Row 2: Address (Whole Row) */}
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+              Address
+            </label>
+            <input
+              type="text"
+              value={selectedPlace.address}
+              disabled
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+                backgroundColor: '#f3f4f6',
+                fontSize: '14px',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
+          {/* Row 3: Categories / Tags (Whole Row) */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#4b5563', marginBottom: '6px' }}>
+              Categories / Tags * (Select all that apply)
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {categories.map((cat) => {
+                const isSelected = selectedCategories.includes(cat);
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => toggleCategory(cat)}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '20px',
+                      border: isSelected ? '1.5px solid #e07a5f' : '1px solid #d1d5db',
+                      backgroundColor: isSelected ? '#fdf0ed' : '#ffffff',
+                      color: isSelected ? '#e07a5f' : '#4b5563',
+                      fontWeight: isSelected ? 700 : 500,
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {isSelected ? '✓ ' : '+ '}{cat}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
