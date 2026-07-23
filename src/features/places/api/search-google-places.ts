@@ -15,14 +15,10 @@ let isLoaded = false;
 let loadPromise: Promise<void> | null = null;
 
 /**
- * Dynamically appends the Google Maps JavaScript API script to the head.
+ * Appends the Google Maps JavaScript API script to the document head.
  * 
- * WHY DYNAMIC LOADING:
- * Avoids hardcoding key injection or script tags inside index.html, allowing the
- * React app to read the validated env config variable dynamically during startup.
- * 
- * @param {string} apiKey - The client-restricted Google Maps API key.
- * @returns {Promise<void>} Resolves when script has loaded.
+ * @param {string} apiKey - Client-restricted Google Maps API key.
+ * @returns {Promise<void>} Resolves when script finishes loading.
  */
 export function loadGoogleMapsScript(apiKey: string): Promise<void> {
   if (isLoaded) return Promise.resolve();
@@ -59,13 +55,9 @@ export function loadGoogleMapsScript(apiKey: string): Promise<void> {
 /**
  * Searches geocoding directories to resolve address autocomplete predictions.
  * 
- * WHY PLACES (NEW) API & AUTOCOMPLETE SUGGESTIONS:
- * Old Google Maps AutocompleteService is deprecated and blocked for new projects.
- * We import the new 'places' library and fetch predictions using AutocompleteSuggestion.
- * 
  * @param {string} query - The search string query.
- * @param {any} sessionToken - The active AutocompleteSessionToken object.
- * @returns {Promise<GeocodingResult[]>} Pure text predictions list (Google) or resolved items (OSM fallback).
+ * @param {any} sessionToken - Active AutocompleteSessionToken object.
+ * @returns {Promise<GeocodingResult[]>} Text predictions list from Google or OSM.
  */
 export async function searchGooglePlaces(
   query: string,
@@ -136,15 +128,11 @@ export async function searchGooglePlaces(
 }
 
 /**
- * Lazy-fetches coordinates for a single chosen place ID.
+ * Fetches coordinates for a single chosen place ID.
  * 
- * WHY PLACE (NEW) DETAILS:
- * Requests coordinates using the new Google Place class and limits fields to location
- * to keep usage pricing within free quota limits.
- * 
- * @param {string} placeId - The selected Google Place UUID.
- * @param {any} sessionToken - The active AutocompleteSessionToken.
- * @returns {Promise<{ lat: number, lng: number } | null>} Coords payload.
+ * @param {string} placeId - Selected Google Place ID.
+ * @param {any} sessionToken - Active AutocompleteSessionToken.
+ * @returns {Promise<{ lat: number, lng: number } | null>} Coordinates payload.
  */
 export async function getPlaceDetails(
   placeId: string,

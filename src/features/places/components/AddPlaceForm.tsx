@@ -23,15 +23,6 @@ interface SelectedSearch {
 
 /**
  * Form to register a new pet-friendly place and submit its initial policy report.
- * 
- * WHY GPS COORDINATES ARE PRIMARY:
- * - We acquire the device's live coordinates (via HTML5 Geolocation API) rather than
- *   querying Google Place Details coordinates. This ensures that the user is physically
- *   on-site when seeding the place, saving Google API details query bills.
- * 
- * WHY GOOGLE IS FALLBACK:
- * - If the device's GPS fails or is blocked, and VITE_ENFORCE_GEOFENCE is false, we
- *   fall back to geocoding or lazy-fetching the place's coordinates from Google.
  */
 /**
  * Helper to parse and extract the city candidate from a Google formatted address string.

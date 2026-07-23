@@ -13,11 +13,6 @@ interface BrowsableListProps {
 
 /**
  * Renders a browsable, filterable, and sortable directory list of places.
- * 
- * WHY CLIENT-SIDE SORTING/FILTERING:
- * Since place lists are bound to map view envelopes which are lightweight,
- * processing filters and sorting relative to GPS coordinates in-memory on the client
- * offers instant, sub-millisecond responsive layout updates.
  */
 export const BrowsableList: React.FC<BrowsableListProps> = ({
   places,

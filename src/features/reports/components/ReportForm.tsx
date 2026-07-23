@@ -13,10 +13,6 @@ interface ReportFormProps {
 
 /**
  * Report form component for suggesting correction or confirming a pet policy.
- * 
- * WHY GEOFENCING & OUTBOX CAVEAT:
- * Proximity checks require active GPS. If the user is offline, we save the payload
- * to IndexedDB, to be synced when internet connectivity returns.
  */
 export const ReportForm: React.FC<ReportFormProps> = ({
   place,

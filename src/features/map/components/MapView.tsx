@@ -28,10 +28,6 @@ const DEFAULT_ZOOM = 12;
 /**
  * Creates custom round paw-shaped markers.
  * 
- * WHY ROUNDED PAW-SHAPED PINS:
- * Replaces clinical, database-like default pins with soft-edged, friendly,
- * pet-themed visual identifiers.
- * 
  * @param {string} fillColor - Hex value representing the status colors.
  * @param {string} strokeColor - Hex outline.
  */

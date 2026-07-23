@@ -9,11 +9,7 @@ interface HeroProps {
 }
 
 /**
- * Renders the introductory landing banner at the top of the hybrid homepage.
- * 
- * WHY QUERY IN REAL TIME:
- * We pull active statistics directly from Supabase to create a sense of community activity,
- * encouraging users to contribute reviews.
+ * Renders the introductory landing banner at the top of the homepage.
  */
 export const Hero: React.FC<HeroProps> = ({ onBrowseClick }) => {
   const { data: stats, isLoading } = useQuery({

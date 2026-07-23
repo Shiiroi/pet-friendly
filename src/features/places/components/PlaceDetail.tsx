@@ -256,9 +256,7 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
               const policyConfirmed = dbPlace.agreeing_devices >= 2 && dbPlace.claim !== null && !policyDisputed;
               const policyStyle = getConfidenceStyle('policy', dbPlace.claim, dbPlace.agreeing_devices, dbPlace.runner_up_agreeing_devices);
 
-              // WHY NAMED CONFLICT LABEL:
-              // A plain "Policy: Allowed" would be actively misleading when the vote is close.
-              // Naming both options lets the reader understand why they see ⚠️ rather than a normal label.
+              // Format conflict label when vote counts are close
               const policyLabel = policyDisputed && dbPlace.claim && dbPlace.runner_up_claim
                 ? `${claimLabels[dbPlace.claim]} vs ${claimLabels[dbPlace.runner_up_claim]}`
                 : (dbPlace.claim ? claimLabels[dbPlace.claim] : 'No policy reports');
@@ -561,9 +559,7 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                             </span>
                           )}
                         </div>
-                        {/* Requirement pills — each requirement gets its own badge.
-                          * WHY: jamming comma-separated values into one badge loses readability
-                          * and makes it impossible to visually distinguish individual requirements. */}
+                        {/* Requirement pills — render individual requirement badges */}
                         {reqLabelsList.length > 0 && (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', marginBottom: '6px' }}>
                             {reqLabelsList.map((label) => (

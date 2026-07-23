@@ -4,14 +4,7 @@ import { getPlacesInBounds } from '../api/get-places-in-bounds';
 import { type MapBounds, type PlaceInBounds } from '../../../shared/types/geo';
 
 /**
- * Custom hook wrapping TanStack useQuery to fetch pet-friendly places in map bounds.
- * 
- * WHY WE DEBOUNCE AND ROUND BOUNDS:
- * - Panning or zooming generates highly frequent coordinate updates down to tiny decimals.
- * - If we query on every minor movement, we'd trigger a massive number of network requests and
- *   destroy cache hits.
- * - We round coordinates to 4 decimal places (~11m resolution) to group nearby pans.
- * - We debounce the state update by 500ms so that requests only fire once the user stops panning.
+ * Fetches pet-friendly places in map bounds with debounced coordinate updates.
  * 
  * @param {MapBounds | null} bounds - The active map coordinates bounds.
  * @returns React Query result containing places array and query state.
