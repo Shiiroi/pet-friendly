@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import '@maplibre/maplibre-gl-leaflet';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { FaMap, FaCity, FaSatellite } from 'react-icons/fa';
 import Supercluster from 'supercluster';
 import { theme } from '../../../shared/styles/theme';
@@ -257,18 +259,48 @@ const MapController: React.FC<{ center: [number, number] | null }> = ({ center }
 };
 
 
+
+// ---------------------------------------------------------------------------
+// MapLibre GL layer for vector tile styles (OpenFreeMap 2D Vector)
+// ---------------------------------------------------------------------------
+
+const MapLibreGLLayer: React.FC<{ styleUrl: string }> = ({ styleUrl }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    const layer = (L as any).maplibreGL({
+      style: styleUrl,
+    });
+    layer.addTo(map);
+
+    return () => {
+      map.removeLayer(layer);
+    };
+  }, [map, styleUrl]);
+
+  return null;
+};
+
 // ---------------------------------------------------------------------------
 // Tile style definitions
 // ---------------------------------------------------------------------------
 
-const TILE_STYLES = [
+const TILE_STYLES: Array<{
+  id: string;
+  label: string;
+  Icon: React.ComponentType<{ size?: number }>;
+  attribution: string;
+  url?: string;
+  styleUrl?: string;
+  overlays?: string[];
+}> = [
   {
-    id: 'voyager',
-    label: 'Clean',
+    id: 'default',
+    label: 'Default',
     Icon: FaMap,
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    overlay: null as string | null,
+    styleUrl: 'https://tiles.openfreemap.org/styles/liberty',
+    attribution:
+      '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> <a href="https://www.openmaptiles.org/" target="_blank">© OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
   },
   {
     id: 'osm',
@@ -276,7 +308,7 @@ const TILE_STYLES = [
     Icon: FaCity,
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    overlay: null as string | null,
+    overlays: [],
   },
   {
     id: 'satellite',
@@ -284,11 +316,15 @@ const TILE_STYLES = [
     Icon: FaSatellite,
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DigitalGlobe, GeoEye, CNES/Airbus DS, USGS, AeroGRID, IGN',
-    overlay: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png' as string | null,
+    overlays: [
+      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+    ],
   },
 ];
 
-type TileStyleId = 'voyager' | 'osm' | 'satellite';
+type TileStyleId = 'default' | 'osm' | 'satellite';
 
 
 // ---------------------------------------------------------------------------
@@ -541,7 +577,7 @@ export const MapView: React.FC<MapViewProps> = ({
     center: [number, number];
     items: Array<{ place: PlaceInBounds; pos: { lat: number; lng: number } }>;
   } | null>(null);
-  const [tileStyle, setTileStyle] = useState<TileStyleId>('voyager');
+  const [tileStyle, setTileStyle] = useState<TileStyleId>('default');
 
   const activeTile = TILE_STYLES.find((s) => s.id === tileStyle) ?? TILE_STYLES[0];
 
@@ -639,22 +675,34 @@ export const MapView: React.FC<MapViewProps> = ({
       <MapContainer
         center={initialCenter}
         zoom={DEFAULT_ZOOM}
+        maxZoom={20}
+        minZoom={5}
         zoomControl={false}
         className="map-container"
         style={{ width: '100%', height: '100%', zIndex: 1 }}
       >
-        <TileLayer
-          key={activeTile.id}
-          attribution={activeTile.attribution}
-          url={activeTile.url}
-        />
-        {activeTile.overlay && (
-          <TileLayer
-            key={`${activeTile.id}-overlay`}
-            url={activeTile.overlay}
-            attribution=""
-            pane="overlayPane"
-          />
+        {activeTile.styleUrl ? (
+          <MapLibreGLLayer key={activeTile.id} styleUrl={activeTile.styleUrl} />
+        ) : (
+          <>
+            <TileLayer
+              key={activeTile.id}
+              attribution={activeTile.attribution}
+              url={activeTile.url!}
+              maxZoom={20}
+              maxNativeZoom={19}
+            />
+            {activeTile.overlays?.map((overlayUrl, idx) => (
+              <TileLayer
+                key={`${activeTile.id}-overlay-${idx}`}
+                url={overlayUrl}
+                attribution=""
+                pane="overlayPane"
+                maxZoom={20}
+                maxNativeZoom={19}
+              />
+            ))}
+          </>
         )}
 
         <MapEvents
