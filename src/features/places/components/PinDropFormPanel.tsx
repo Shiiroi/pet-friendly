@@ -74,15 +74,13 @@ export const PinDropFormPanel: React.FC<PinDropFormPanelProps> = ({
     marginBottom: '5px',
   };
 
-  // Sync state when reverse-geocoded result updates
+  // Sync state in real-time when reverse-geocoded result or map pin updates
   useEffect(() => {
     if (reverseResult) {
       if (reverseResult.address) setAddress(reverseResult.address);
       if (reverseResult.city) setCity(reverseResult.city);
       if (reverseResult.province) setProvince(reverseResult.province);
-      if (!placeName && reverseResult.name) {
-        setPlaceName(reverseResult.name);
-      }
+      if (reverseResult.name) setPlaceName(reverseResult.name);
     }
   }, [reverseResult]);
 
