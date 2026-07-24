@@ -1,4 +1,4 @@
-import type { WeeklyOperatingHours } from '../../features/places/types/hours';
+import type { WeeklyOperatingHours } from './hours';
 
 export interface MapBounds {
   minLat: number;

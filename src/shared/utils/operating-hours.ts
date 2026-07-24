@@ -1,14 +1,14 @@
 import {
   DAYS_OF_WEEK,
   DAY_LABELS,
-} from '../../features/places/types/hours';
+} from '../types/hours';
 import type {
   DayOfWeek,
   DaySchedule,
   OperatingStatus,
   TimeSlot,
   WeeklyOperatingHours,
-} from '../../features/places/types/hours';
+} from '../types/hours';
 
 /**
  * Returns default weekly operating hours (Standard 9 AM - 6 PM daily).
