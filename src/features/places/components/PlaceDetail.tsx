@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { FaBone, FaClock, FaCamera, FaTimesCircle, FaQuestionCircle, FaExclamationTriangle, FaUsers, FaCalendarAlt } from 'react-icons/fa';
+import { FaBone, FaClock, FaCamera, FaTimesCircle, FaQuestionCircle, FaExclamationTriangle, FaUsers, FaCalendarAlt, FaFlag } from 'react-icons/fa';
 import { theme } from '../../../shared/styles/theme';
 import { type PlaceInBounds, type ReportItem } from '../../../shared/types/geo';
 import { getDeviceId } from '../../../shared/utils/device-id';
@@ -579,7 +579,7 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                 gap: '4px',
               }}
             >
-              Flag this place <FaExclamationTriangle size={10} />
+              Report Place <FaFlag size={10} />
             </button>
           </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { FaFlag } from 'react-icons/fa';
 import { supabase } from '../shared/api/supabase-client';
 import { getDeviceId } from '../shared/utils/device-id';
 import { Hero, BrowsableList, HowItWorks, FAQ } from '../features/home';
@@ -270,8 +271,8 @@ const HomePage: React.FC = () => {
                   boxSizing: 'border-box',
                 }}
               >
-                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#ef4444' }}>
-                  Flag Spot: {flaggingPlace.name}
+                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 800, color: '#dc2626', display: 'flex', alignItems: 'center', gap: '8px', fontFamily: theme.fonts.heading }}>
+                  <FaFlag size={16} /> Report Place: {flaggingPlace.name}
                 </h3>
                 <FlagButton
                   place={flaggingPlace}
@@ -286,16 +287,17 @@ const HomePage: React.FC = () => {
                   style={{
                     width: '100%',
                     marginTop: '16px',
-                    padding: '10px',
-                    backgroundColor: '#f3f4f6',
-                    border: 'none',
-                    borderRadius: '8px',
+                    padding: '12px',
+                    backgroundColor: '#ffffff',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '10px',
                     cursor: 'pointer',
-                    fontSize: '14px',
+                    fontSize: '13px',
                     fontWeight: 600,
                   }}
                 >
-                  Cancel Flag Action
+                  Cancel
                 </button>
               </div>
             )}
