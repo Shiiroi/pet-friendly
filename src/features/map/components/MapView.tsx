@@ -394,38 +394,42 @@ export const MapView: React.FC<MapViewProps> = ({
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            borderRadius: '20px',
-            padding: '24px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+            backgroundColor: 'rgba(255, 255, 255, 0.98)',
+            borderRadius: '24px',
+            padding: '24px 28px',
+            boxShadow: '0 12px 30px rgba(0,0,0,0.12)',
             textAlign: 'center',
-            maxWidth: '280px',
+            maxWidth: '320px',
+            width: '90%',
             zIndex: 1000,
             pointerEvents: 'none',
-            border: `1.5px solid ${theme.colors.softPink}`,
+            border: `2px dashed ${theme.colors.terracotta}`,
+            boxSizing: 'border-box',
           }}
         >
-          <div style={{ fontSize: '32px', marginBottom: '8px' }}>📍</div>
+          <div style={{ fontSize: '28px', marginBottom: '8px', lineHeight: 1 }}>🐾🐾</div>
           <h3
             style={{
-              fontSize: '16px',
-              fontWeight: 700,
-              color: theme.colors.textDark,
-              margin: '0 0 6px 0',
+              fontSize: '20px',
+              fontWeight: 800,
+              color: theme.colors.terracotta,
+              margin: '0 0 8px 0',
               fontFamily: theme.fonts.heading,
+              letterSpacing: '-0.3px',
             }}
           >
-            No spots reported here yet
+            No furbaby spots here!
           </h3>
           <p
             style={{
-              fontSize: '12px',
-              color: theme.colors.textMuted,
+              fontSize: '13px',
+              color: '#6b7c96',
               margin: 0,
-              lineHeight: 1.4,
+              lineHeight: 1.5,
+              fontWeight: 500,
             }}
           >
-            Search for a place above to be the first to contribute a pet policy! 🐾
+            No pet-friendly places reported in this area yet -- be the first! 🐾
           </p>
         </div>
       )}
