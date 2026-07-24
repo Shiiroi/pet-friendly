@@ -317,6 +317,36 @@ export const MapView: React.FC<MapViewProps> = ({
         .map-container .leaflet-tile-pane {
           filter: sepia(8%) saturate(85%) hue-rotate(-8deg);
         }
+
+        .map-container .leaflet-marker-icon {
+          transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease-out;
+        }
+
+        .custom-paw-pin, .custom-cluster, .custom-paw-unconfirmed, .custom-ghost-pin {
+          animation: markerSpringPop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+          transform-origin: center center;
+          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .custom-paw-pin:hover, .custom-cluster:hover, .custom-paw-unconfirmed:hover {
+          transform: scale(1.18) !important;
+          z-index: 1000 !important;
+        }
+
+        @keyframes markerSpringPop {
+          0% {
+            transform: scale(0.2);
+            opacity: 0;
+          }
+          65% {
+            transform: scale(1.16);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
       `}</style>
       <MapContainer
         center={initialCenter}
