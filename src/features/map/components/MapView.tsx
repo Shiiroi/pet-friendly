@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import Supercluster from 'supercluster';
 import { theme } from '../../../shared/styles/theme';
@@ -99,8 +99,7 @@ function createUnconfirmedPawIcon(borderColor: string = '#9ca3af') {
 }
 
 /**
- * Creates a dashed-outline "ghost" marker with a plus sign,
- * representing a geocoded address location not yet verified in our database.
+ * Creates a dashed-outline "ghost" marker with a plus sign.
  */
 function createGhostIcon() {
   return L.divIcon({
@@ -127,65 +126,102 @@ function createGhostIcon() {
 }
 
 /**
- * Creates custom cluster icons showing count.
+ * Creates dynamic, cutesy pet-themed cluster icons with size and color progression based on point count.
  */
 function createClusterIcon(count: number) {
+  let size: number;
+  let bg: string;
+  let border: string;
+  let fontSize: string;
+
+  if (count >= 10) {
+    size = 46;
+    bg = '#C8553D'; // Rich terracotta red
+    border = '#FFF3E0';
+    fontSize = '15px';
+  } else if (count >= 5) {
+    size = 40;
+    bg = theme.colors.terracotta;
+    border = '#FFE0B2';
+    fontSize = '14px';
+  } else {
+    size = 34;
+    bg = '#E07A5F'; // Warm pastel terracotta
+    border = '#ffffff';
+    fontSize = '12px';
+  }
+
   return L.divIcon({
     className: 'custom-cluster',
     html: `
       <div style="
-        background-color: ${theme.colors.terracotta};
-        border: 2px solid #ffffff;
+        background-color: ${bg};
+        border: 2.5px solid ${border};
         color: #ffffff;
-        width: 38px;
-        height: 38px;
+        width: ${size}px;
+        height: ${size}px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
-        font-size: 13px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        font-weight: 800;
+        font-size: ${fontSize};
+        box-shadow: 0 4px 14px rgba(200, 85, 61, 0.35);
         font-family: ${theme.fonts.heading};
         cursor: pointer;
       ">
         ${count}
       </div>
     `,
-    iconSize: [38, 38],
-    iconAnchor: [19, 19],
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+/**
+ * Calculates spiderfied ring coordinates for co-located cluster pins.
+ */
+function calculateSpiderfyRing(centerLat: number, centerLng: number, count: number) {
+  const angleStep = (2 * Math.PI) / count;
+  const radius = 0.0003; // ~30 meters ring radius
+  return Array.from({ length: count }, (_, i) => {
+    const angle = i * angleStep;
+    return {
+      lat: centerLat + radius * Math.sin(angle),
+      lng: centerLng + radius * Math.cos(angle),
+    };
   });
 }
 
 const MapEvents: React.FC<{
   onBoundsChange: (bounds: MapBounds) => void;
   onZoomChange: (zoom: number) => void;
-}> = ({ onBoundsChange, onZoomChange }) => {
+  onClearSpiderfy: () => void;
+}> = ({ onBoundsChange, onZoomChange, onClearSpiderfy }) => {
   const map = useMapEvents({
     moveend: () => {
       const b = map.getBounds();
-      const newBounds = {
+      onBoundsChange({
         minLat: b.getSouth(),
         minLng: b.getWest(),
         maxLat: b.getNorth(),
         maxLng: b.getEast(),
-      };
-      onBoundsChange(newBounds);
+      });
     },
     zoomend: () => {
       onZoomChange(map.getZoom());
+      onClearSpiderfy();
     },
   });
 
   useEffect(() => {
     const b = map.getBounds();
-    const newBounds = {
+    onBoundsChange({
       minLat: b.getSouth(),
       minLng: b.getWest(),
       maxLat: b.getNorth(),
       maxLng: b.getEast(),
-    };
-    onBoundsChange(newBounds);
+    });
     onZoomChange(map.getZoom());
   }, [map]);
 
@@ -290,8 +326,8 @@ const ClusterMarker: React.FC<{
   lng: number;
   count: number;
   supercluster: Supercluster<SuperclusterPointProps, any>;
-  onSelectPlace: (place: PlaceInBounds) => void;
-}> = ({ clusterId, lat, lng, count, supercluster, onSelectPlace }) => {
+  onSpiderfy: (centerLat: number, centerLng: number, places: PlaceInBounds[]) => void;
+}> = ({ clusterId, lat, lng, count, supercluster, onSpiderfy }) => {
   const map = useMap();
 
   const handleClick = () => {
@@ -301,12 +337,14 @@ const ClusterMarker: React.FC<{
       18
     );
 
-    if (expansionZoom > currentZoom) {
+    if (expansionZoom > currentZoom && currentZoom < 18) {
       map.setView([lat, lng], expansionZoom);
     } else {
-      const leaves = supercluster.getLeaves(clusterId, 10);
-      if (leaves && leaves.length > 0 && leaves[0].properties?.place) {
-        onSelectPlace(leaves[0].properties.place);
+      // At max zoom or identical coordinates: Spiderfy leaf markers!
+      const leaves = supercluster.getLeaves(clusterId, 50);
+      const placeList = leaves.map((l) => l.properties?.place).filter(Boolean) as PlaceInBounds[];
+      if (placeList.length > 0) {
+        onSpiderfy(lat, lng, placeList);
       }
     }
   };
@@ -321,7 +359,7 @@ const ClusterMarker: React.FC<{
 };
 
 /**
- * Main styled Leaflet Map view drawing places and high-performance Supercluster spatial centroids.
+ * Main styled Leaflet Map view drawing places, dynamic Supercluster spatial centroids, and spiderfy ring fanout.
  */
 export const MapView: React.FC<MapViewProps> = ({
   places,
@@ -334,6 +372,10 @@ export const MapView: React.FC<MapViewProps> = ({
 }) => {
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [initialCenter] = useState<[number, number]>(MANILA_CENTER);
+  const [spiderfiedState, setSpiderfiedState] = useState<{
+    center: [number, number];
+    items: Array<{ place: PlaceInBounds; pos: { lat: number; lng: number } }>;
+  } | null>(null);
 
   // Initialize Supercluster instance using screen-pixel distance clustering
   const supercluster = useMemo(() => {
@@ -363,6 +405,18 @@ export const MapView: React.FC<MapViewProps> = ({
     if (!places || places.length === 0) return [];
     return supercluster.getClusters([-180, -85, 180, 85], Math.floor(zoom));
   }, [supercluster, places, zoom]);
+
+  const handleSpiderfyCluster = (centerLat: number, centerLng: number, leafPlaces: PlaceInBounds[]) => {
+    const ringPositions = calculateSpiderfyRing(centerLat, centerLng, leafPlaces.length);
+    const spiderfiedItems = leafPlaces.map((p, idx) => ({
+      place: p,
+      pos: ringPositions[idx],
+    }));
+    setSpiderfiedState({
+      center: [centerLat, centerLng],
+      items: spiderfiedItems,
+    });
+  };
 
   const getMarkerIcon = (place: PlaceInBounds) => {
     const style = getConfidenceStyle('policy', place.claim, place.agreeing_devices, place.runner_up_agreeing_devices);
@@ -413,6 +467,7 @@ export const MapView: React.FC<MapViewProps> = ({
         <MapEvents
           onBoundsChange={onBoundsChange}
           onZoomChange={setZoom}
+          onClearSpiderfy={() => setSpiderfiedState(null)}
         />
         <MapController center={centerOverride} />
         <ZoomControls />
@@ -434,7 +489,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 lng={clusterLng}
                 count={pointCount}
                 supercluster={supercluster}
-                onSelectPlace={onSelectPlace}
+                onSpiderfy={handleSpiderfyCluster}
               />
             );
           }
@@ -448,11 +503,42 @@ export const MapView: React.FC<MapViewProps> = ({
               position={[place.latitude, place.longitude]}
               icon={getMarkerIcon(place)}
               eventHandlers={{
-                click: () => onSelectPlace(place),
+                click: () => {
+                  setSpiderfiedState(null);
+                  onSelectPlace(place);
+                },
               }}
             />
           );
         })}
+
+        {/* Render Spiderfied fanout ring when co-located cluster is clicked */}
+        {spiderfiedState && (
+          <>
+            {spiderfiedState.items.map((item) => (
+              <React.Fragment key={`spider-group-${item.place.id}`}>
+                <Polyline
+                  positions={[spiderfiedState.center, [item.pos.lat, item.pos.lng]]}
+                  pathOptions={{
+                    color: theme.colors.terracotta,
+                    weight: 2,
+                    dashArray: '4, 4',
+                    opacity: 0.8,
+                  }}
+                />
+                <Marker
+                  position={[item.pos.lat, item.pos.lng]}
+                  icon={getMarkerIcon(item.place)}
+                  eventHandlers={{
+                    click: () => {
+                      onSelectPlace(item.place);
+                    },
+                  }}
+                />
+              </React.Fragment>
+            ))}
+          </>
+        )}
 
         {/* Render ghost place selection from geocoder if present */}
         {ghostPlace && (
