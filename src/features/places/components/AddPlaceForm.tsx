@@ -6,7 +6,6 @@ import { getDeviceId } from '../../../shared/utils/device-id';
 import { uuidv4 } from '../../../shared/utils/uuid';
 import { addPendingReport } from '../../../shared/outbox/outbox-db';
 import { PlaceSearchBar } from './PlaceSearchBar';
-import { getPlaceDetails } from '../api/search-google-places';
 import { ProvinceCombobox } from './ProvinceCombobox';
 import type { WeeklyOperatingHours } from '../types/hours';
 
@@ -65,6 +64,9 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
     return null;
   });
 
+  const [placeName, setPlaceName] = useState(() => initialPlace?.name || '');
+  const [address, setAddress] = useState(() => initialPlace?.address || '');
+
   const [city, setCity] = useState(() => {
     if (initialPlace?.address) {
       return extractCityFromAddress(initialPlace.address);
@@ -80,7 +82,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Auto-captured from Google — used post-submission
+  // Auto-captured operating hours — used post-submission
   const [autoHours, setAutoHours] = useState<WeeklyOperatingHours | null>(null);
 
   const categories = ['Café', 'Restaurant', 'Park', 'Mall', 'Hotel', 'Shop', 'Other'];
@@ -99,13 +101,15 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
     lat: number,
     lng: number,
     name: string,
-    address: string,
+    addressStr: string,
     hours?: WeeklyOperatingHours | null,
     autoCity?: string,
     autoProvince?: string
   ) => {
-    setSelectedPlace({ id: `custom-${uuidv4()}`, name, address, lat, lng });
-    const resolvedCity = autoCity || extractCityFromAddress(address);
+    setSelectedPlace({ id: `custom-${uuidv4()}`, name, address: addressStr, lat, lng });
+    setPlaceName(name);
+    setAddress(addressStr);
+    const resolvedCity = autoCity || extractCityFromAddress(addressStr);
     setCity(resolvedCity);
     if (autoProvince) setProvince(autoProvince);
     if (hours) setAutoHours(hours);
@@ -132,28 +136,18 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
 
     let resolvedLat = 0;
     let resolvedLng = 0;
-    let resolvedHours = autoHours;
+    const resolvedHours = autoHours;
 
     try {
-      if (selectedPlace.lat !== undefined && selectedPlace.lng !== undefined) {
-        resolvedLat = selectedPlace.lat;
-        resolvedLng = selectedPlace.lng;
-      } else {
-        const details = await getPlaceDetails(selectedPlace.id);
-        if (details) {
-          resolvedLat = details.lat;
-          resolvedLng = details.lng;
-          if (details.openingHours) resolvedHours = details.openingHours;
-          if (details.city && !city) setCity(details.city);
-          if (details.province && !province) setProvince(details.province);
-        } else {
-          throw new Error('Coordinates could not be resolved from search results.');
-        }
-      }
+      resolvedLat = selectedPlace.lat || 0;
+      resolvedLng = selectedPlace.lng || 0;
+
+      const finalName = placeName.trim() || selectedPlace.name;
+      const finalAddress = address.trim() || selectedPlace.address;
 
       const { data: newPlaceId, error } = await supabase.rpc('create_place_with_report', {
-        p_name: selectedPlace.name,
-        p_address: selectedPlace.address,
+        p_name: finalName,
+        p_address: finalAddress,
         p_city: city.trim(),
         p_province: province.trim(),
         p_categories: selectedCategories,
@@ -171,7 +165,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
       if (!newPlaceId) throw new Error('Transaction returned empty response.');
 
       triggerNicknamePromptFlow();
-      onSuccess(newPlaceId, selectedPlace.name, resolvedHours);
+      onSuccess(newPlaceId, finalName, resolvedHours);
       onClose();
     } catch (err: any) {
       if (err instanceof Error && (err.message.includes('fetch') || err.message.includes('NetworkError'))) {
@@ -304,16 +298,18 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             </label>
             <input
               type="text"
-              value={selectedPlace.name}
-              disabled
+              value={placeName}
+              onChange={(e) => setPlaceName(e.target.value)}
+              placeholder="e.g. Pawfe Cafe..."
               style={{
                 width: '100%',
-                padding: '10px',
+                padding: '10px 12px',
                 borderRadius: '8px',
-                border: '1px solid #ddd',
-                backgroundColor: '#f3f4f6',
+                border: `1px solid ${theme.colors.borderLight}`,
+                backgroundColor: '#ffffff',
                 color: theme.colors.textDark,
                 fontSize: '14px',
+                outline: 'none',
                 boxSizing: 'border-box',
               }}
             />
@@ -326,16 +322,18 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             </label>
             <input
               type="text"
-              value={selectedPlace.address}
-              disabled
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Street address, building, or landmark..."
               style={{
                 width: '100%',
-                padding: '10px',
+                padding: '10px 12px',
                 borderRadius: '8px',
-                border: '1px solid #ddd',
-                backgroundColor: '#f3f4f6',
+                border: `1px solid ${theme.colors.borderLight}`,
+                backgroundColor: '#ffffff',
                 color: theme.colors.textDark,
                 fontSize: '14px',
+                outline: 'none',
                 boxSizing: 'border-box',
               }}
             />
@@ -349,18 +347,19 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
               </label>
               <input
                 type="text"
-                value={city || 'General'}
-                disabled
-                readOnly
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Quezon City, Taguig..."
                 style={{
                   width: '100%',
                   height: '40px',
-                  padding: '0 10px',
+                  padding: '0 12px',
                   borderRadius: '8px',
-                  border: '1px solid #ddd',
-                  backgroundColor: '#f3f4f6',
+                  border: `1px solid ${theme.colors.borderLight}`,
+                  backgroundColor: '#ffffff',
                   color: theme.colors.textDark,
                   fontSize: '14px',
+                  outline: 'none',
                   boxSizing: 'border-box',
                 }}
               />

@@ -309,7 +309,7 @@ export const PlaceAddedModal: React.FC<PlaceAddedModalProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', padding: '0 4px' }}>
                   {autoHours ? (
                     <span style={{ fontSize: '11px', color: theme.colors.terracotta, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <FaClock size={11} /> Auto-filled from Google Maps
+                      <FaClock size={11} /> Auto-filled from location search
                     </span>
                   ) : <span />}
                   {hours && (

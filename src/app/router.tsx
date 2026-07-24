@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { FaFlag } from 'react-icons/fa';
@@ -11,16 +11,16 @@ import {
   PlaceDetail, 
   useAllPlaces,
   usePlaceDetails,
-  loadGoogleMapsScript,
-  AddPlaceForm
+  reversePhotonGeocode,
+  type ReverseGeocodeResult,
 } from '../features/places';
+import { PinDropFormPanel } from '../features/places/components/PinDropFormPanel';
 import { PlaceAddedModal } from '../features/places/components/PlaceAddedModal';
 import { useReportsForPlace, ReportForm, FlagButton } from '../features/reports';
 import { NicknamePrompt } from '../features/devices';
 import { useOutboxSync } from '../shared/outbox/use-outbox-sync';
 import { type PlaceInBounds } from '../shared/types/geo';
 import { theme } from '../shared/styles/theme';
-import { env } from '../config/env';
 
 const HomePage: React.FC = () => {
   const [selectedPlace, setSelectedPlace] = useState<PlaceInBounds | null>(null);
@@ -29,8 +29,16 @@ const HomePage: React.FC = () => {
   const [centerOverride, setCenterOverride] = useState<[number, number] | null>(null);
   const [userCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
+  // Grab / Angkas / FoodPanda style Pin Drop Mode states
+  const [isPinDropActive, setIsPinDropActive] = useState(false);
+  const [pinDropCenter, setPinDropCenter] = useState<{ lat: number; lng: number }>({ lat: 14.5995, lng: 120.9842 });
+  const [pinDropSourceHint, setPinDropSourceHint] = useState<'search' | 'pin_drop'>('pin_drop');
+  const [pinDropQueryName, setPinDropQueryName] = useState('');
+  const [reverseGeocodeResult, setReverseGeocodeResult] = useState<ReverseGeocodeResult | null>(null);
+  const [isReverseLoading, setIsReverseLoading] = useState(false);
+  const [isPinSubmitting, setIsPinSubmitting] = useState(false);
+
   // Form rendering states
-  const [isAddingPlace, setIsAddingPlace] = useState(false);
   const [reportingPlace, setReportingPlace] = useState<PlaceInBounds | null>(null);
   const [flaggingPlace, setFlaggingPlace] = useState<PlaceInBounds | null>(null);
   const [showNicknamePrompt, setShowNicknamePrompt] = useState(false);
@@ -55,15 +63,6 @@ const HomePage: React.FC = () => {
     error: reportsError 
   } = useReportsForPlace(selectedPlace?.id || '');
 
-  // Initialize the Google Maps SDK script dynamically on mount
-  useEffect(() => {
-    if (env.VITE_GOOGLE_PLACES_API_KEY) {
-      loadGoogleMapsScript(env.VITE_GOOGLE_PLACES_API_KEY).catch((err) => {
-        console.error('[Google Maps SDK Load Failed]:', err);
-      });
-    }
-  }, []);
-
 
   const handleSelectLocalPlace = (place: PlaceInBounds) => {
     setCenterOverride([place.latitude, place.longitude]);
@@ -72,12 +71,109 @@ const HomePage: React.FC = () => {
     setIsGhostSelected(false);
   };
 
-  const handleSelectGeocodePlace = (lat: number, lng: number, name: string, address: string) => {
+  const triggerReverseGeocode = async (lat: number, lng: number) => {
+    setIsReverseLoading(true);
+    try {
+      const res = await reversePhotonGeocode(lat, lng);
+      if (res) {
+        setReverseGeocodeResult(res);
+      }
+    } catch (err) {
+      console.error('[Reverse Geocode Failed]:', err);
+    } finally {
+      setIsReverseLoading(false);
+    }
+  };
+
+  const handleSelectGeocodePlace = (
+    lat: number,
+    lng: number,
+    name: string,
+    address: string,
+    _openingHours?: any,
+    city?: string,
+    province?: string
+  ) => {
     setCenterOverride([lat, lng]);
-    const ghost = { latitude: lat, longitude: lng, name, address };
-    setGhostPlace(ghost);
-    setIsGhostSelected(true);
+    setPinDropCenter({ lat, lng });
+    setPinDropSourceHint('search');
+    setPinDropQueryName(name);
+    setReverseGeocodeResult({
+      address: address || `${name}, ${city || ''}`,
+      city: city || '',
+      province: province || 'Metro Manila',
+      name,
+    });
+    setIsPinDropActive(true);
     setSelectedPlace(null);
+    setGhostPlace(null);
+  };
+
+  const handleStartPinDrop = (queryHint?: string) => {
+    setIsPinDropActive(true);
+    setPinDropSourceHint('pin_drop');
+    setPinDropQueryName(queryHint || '');
+    setSelectedPlace(null);
+    setGhostPlace(null);
+    triggerReverseGeocode(pinDropCenter.lat, pinDropCenter.lng);
+  };
+
+  const handleCenterPinMove = (lat: number, lng: number) => {
+    setPinDropCenter({ lat, lng });
+    triggerReverseGeocode(lat, lng);
+  };
+
+  const handleCancelPinDrop = () => {
+    setIsPinDropActive(false);
+    setReverseGeocodeResult(null);
+    setPinDropQueryName('');
+  };
+
+  const handleConfirmPinDrop = async (data: {
+    name: string;
+    address: string;
+    city: string;
+    province: string;
+    categories: string[];
+    claim: 'allowed' | 'outdoor_only';
+    priceRange: 'budget' | 'mid' | 'splurge';
+    lat: number;
+    lng: number;
+  }) => {
+    setIsPinSubmitting(true);
+    try {
+      const { data: newPlaceId, error } = await supabase.rpc('create_place_with_report', {
+        p_name: data.name,
+        p_address: data.address,
+        p_city: data.city,
+        p_province: data.province,
+        p_categories: data.categories,
+        p_latitude: data.lat,
+        p_longitude: data.lng,
+        p_device_id: getDeviceId(),
+        p_claim: data.claim,
+        p_pet_menu: 'not_sure',
+        p_price_range: data.priceRange,
+        p_notes: '',
+        p_operating_hours: null,
+      });
+
+      if (error) throw error;
+      if (!newPlaceId) throw new Error('Transaction returned empty response.');
+
+      handleFormSuccess();
+
+      const prompted = localStorage.getItem('nickname_prompted');
+      if (!prompted) setShowNicknamePrompt(true);
+
+      setPlaceAdded({ id: newPlaceId, name: data.name });
+      setIsPinDropActive(false);
+    } catch (err: any) {
+      console.error('[Create Place Failed]:', err);
+      alert(err.message || 'Failed to save spot. Please try again.');
+    } finally {
+      setIsPinSubmitting(false);
+    }
   };
 
   const handleSelectGhostPin = () => {
@@ -96,7 +192,6 @@ const HomePage: React.FC = () => {
   };
 
   const handleFormSuccess = () => {
-    // Invalidate cached query keys to trigger automatic viewport markers reload
     queryClient.invalidateQueries({ queryKey: ['all-places'] });
     queryClient.invalidateQueries({ queryKey: ['places-in-bounds'] });
     queryClient.invalidateQueries({ queryKey: ['reports-for-place'] });
@@ -104,18 +199,7 @@ const HomePage: React.FC = () => {
     setGhostPlace(null);
   };
 
-  /**
-   * Called by AddPlaceForm after a new place is successfully created.
-   * Stashes the new place info so PlaceAddedModal can be shown.
-   */
-  const handleAddPlaceSuccess = (newPlaceId: string, placeName: string, autoHours?: any) => {
-    handleFormSuccess();
-    setIsAddingPlace(false);
-    setGhostPlace(null);
-    if (newPlaceId && newPlaceId !== 'offline') {
-      setPlaceAdded({ id: newPlaceId, name: placeName, hours: autoHours });
-    }
-  };
+
 
   const handleNicknameSubmit = async (nickname: string) => {
     try {
@@ -162,7 +246,9 @@ const HomePage: React.FC = () => {
               centerOverride={centerOverride}
               ghostPlace={ghostPlace}
               onSelectGhostPlace={handleSelectGhostPin}
-              hideExplainer={!!selectedPlace || isAddingPlace}
+              hideExplainer={!!selectedPlace || isPinDropActive}
+              isPinDropActive={isPinDropActive}
+              onCenterPinMove={handleCenterPinMove}
             />
 
             {/* Input Overlay */}
@@ -170,10 +256,11 @@ const HomePage: React.FC = () => {
               loadedPlaces={places}
               onSelectLocalPlace={handleSelectLocalPlace}
               onSelectGeocodePlace={handleSelectGeocodePlace}
+              onStartPinDrop={handleStartPinDrop}
             />
 
             {/* Details Panel Drawer overlay */}
-            {selectedPlace && !isGhostSelected && !isAddingPlace && !reportingPlace && !flaggingPlace && (
+            {selectedPlace && !isGhostSelected && !isPinDropActive && !reportingPlace && !flaggingPlace && (
               <PlaceDetail
                 place={selectedPlace}
                 isGhost={false}
@@ -184,50 +271,6 @@ const HomePage: React.FC = () => {
                 onReportClick={() => setReportingPlace(selectedPlace)}
                 onFlagClick={() => setFlaggingPlace(selectedPlace)}
               />
-            )}
-
-            {/* Ghost Detail panel redirecting to Add Form */}
-            {isGhostSelected && ghostPlace && !isAddingPlace && (
-              <PlaceDetail
-                place={ghostPlace}
-                isGhost={true}
-                onClose={handleClosePanel}
-                reports={[]}
-                isLoading={false}
-                error={null}
-                onAddPlaceClick={() => {
-                  setIsAddingPlace(true);
-                  setIsGhostSelected(false);
-                }}
-              />
-            )}
-
-            {/* Add New Place Form Overlay panel */}
-            {isAddingPlace && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                  zIndex: 1100,
-                  overflowY: 'auto',
-                  padding: '20px',
-                  boxSizing: 'border-box',
-                }}
-              >
-                <AddPlaceForm
-                  initialPlace={ghostPlace}
-                  onClose={() => {
-                    setIsAddingPlace(false);
-                    setGhostPlace(null);
-                  }}
-                  onSuccess={handleAddPlaceSuccess}
-                  onTriggerNicknamePrompt={() => setShowNicknamePrompt(true)}
-                />
-              </div>
             )}
 
             {/* Report existing Spot Form Overlay panel */}
@@ -288,11 +331,11 @@ const HomePage: React.FC = () => {
             )}
 
             {/* Toggle add place button overlay */}
-            {!isAddingPlace && !reportingPlace && !flaggingPlace && !selectedPlace && !isGhostSelected && (
+            {!isPinDropActive && !reportingPlace && !flaggingPlace && !selectedPlace && !isGhostSelected && (
               <button
                 onClick={() => {
-                  setIsAddingPlace(true);
                   handleClosePanel();
+                  handleStartPinDrop();
                 }}
                 style={{
                   position: 'absolute',
@@ -302,22 +345,36 @@ const HomePage: React.FC = () => {
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '20px',
-                  padding: '10px 20px',
-                  fontWeight: 700,
+                  padding: '12px 22px',
+                  fontWeight: 800,
                   fontSize: '13px',
                   zIndex: 1000,
                   cursor: 'pointer',
-                  boxShadow: '0 4px 15px rgba(224, 122, 95, 0.3)',
+                  boxShadow: '0 6px 20px rgba(224, 122, 95, 0.35)',
+                  fontFamily: theme.fonts.heading,
                 }}
               >
-                Add a New Spot 🐾
+                + Add Spot 🐾
               </button>
             )}
-
           </div>
         </div>
       </div>
 
+      {/* Grab / Angkas / FoodPanda style Pin Drop Form Panel */}
+      {isPinDropActive && (
+        <PinDropFormPanel
+          lat={pinDropCenter.lat}
+          lng={pinDropCenter.lng}
+          reverseResult={reverseGeocodeResult}
+          isReverseLoading={isReverseLoading}
+          sourceHint={pinDropSourceHint}
+          initialPlaceName={pinDropQueryName}
+          onConfirm={handleConfirmPinDrop}
+          onCancel={handleCancelPinDrop}
+          isSubmitting={isPinSubmitting}
+        />
+      )}
       {/* Directory cards */}
       <BrowsableList
         places={places}
