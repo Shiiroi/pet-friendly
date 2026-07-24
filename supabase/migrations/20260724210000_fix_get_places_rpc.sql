@@ -1,7 +1,11 @@
--- 1. Add menu_photos jsonb column to places table
+-- Fix: get_places_in_bounds return type change (menu_photos column added)
+-- Must drop and recreate since Postgres cannot change return types with CREATE OR REPLACE.
+-- Also marks 20260724160000 migration as applied for remote instances that failed mid-run.
+
+-- Apply the menu_photos column (idempotent)
 alter table places add column if not exists menu_photos jsonb default '[]'::jsonb;
 
--- 2. RPC function to append or update menu photos for a place
+-- RPC to append a menu photo (idempotent)
 create or replace function add_place_menu_photo(
   p_place_id uuid,
   p_photo jsonb
@@ -15,14 +19,14 @@ begin
   set menu_photos = coalesce(menu_photos, '[]'::jsonb) || p_photo,
       updated_at = now()
   where id = p_place_id;
-
   return true;
 end;
 $$;
 
--- 3. Re-create get_places_in_bounds RPC returning menu_photos
--- Must drop first; Postgres disallows changing return type via CREATE OR REPLACE
+-- Drop get_places_in_bounds with ALL known previous overload signatures
 drop function if exists get_places_in_bounds(double precision, double precision, double precision, double precision);
+
+-- Recreate with menu_photos in return type
 create or replace function get_places_in_bounds(
   min_lat double precision,
   min_lng double precision,
@@ -51,7 +55,6 @@ returns table (
   runner_up_price_range text,
   price_range_runner_up_agreeing_devices bigint,
   operating_hours jsonb,
-  pet_menu_details jsonb,
   menu_photos jsonb
 )
 language plpgsql
@@ -59,7 +62,7 @@ security definer
 as $$
 begin
   return query
-  select 
+  select
     p.id,
     p.name,
     p.address,
@@ -81,7 +84,6 @@ begin
     pcpr.runner_up_price_range,
     coalesce(pcpr.runner_up_agreeing_devices, 0)::bigint as price_range_runner_up_agreeing_devices,
     p.operating_hours,
-    p.pet_menu_details,
     coalesce(p.menu_photos, '[]'::jsonb)
   from places p
   left join place_current_status pcs on p.id = pcs.place_id

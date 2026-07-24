@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FaCamera, FaUtensils } from 'react-icons/fa';
 import { theme } from '../../../shared/styles/theme';
 import type { MenuPhoto } from '../../../shared/types/pet-menu';
 import { UploadMenuPhotoModal } from './UploadMenuPhotoModal';
@@ -78,7 +79,7 @@ export const MenuPhotosView: React.FC<MenuPhotosViewProps> = ({
               boxShadow: '0 2px 6px rgba(224, 122, 95, 0.15)',
             }}
           >
-            📷 Upload Photo
+            <FaCamera size={11} /> Upload Photo
           </button>
         )}
       </div>
@@ -128,9 +129,13 @@ export const MenuPhotosView: React.FC<MenuPhotosViewProps> = ({
             cursor: 'pointer',
             boxShadow: activeTab === 'regular_menu' ? '0 2px 5px rgba(0,0,0,0.08)' : 'none',
             transition: 'all 0.15s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px',
           }}
         >
-          🍽️ Regular Menu ({regularMenuPhotos.length})
+          <FaUtensils size={11} /> Regular Menu ({regularMenuPhotos.length})
         </button>
       </div>
 
@@ -145,8 +150,8 @@ export const MenuPhotosView: React.FC<MenuPhotosViewProps> = ({
             border: '1px dashed #e5e7eb',
           }}
         >
-          <div style={{ fontSize: '24px', marginBottom: '4px' }}>
-            {activeTab === 'pet_menu' ? '🐾' : '📷'}
+          <div style={{ fontSize: '24px', marginBottom: '4px', display: 'flex', justifyContent: 'center' }}>
+            {activeTab === 'pet_menu' ? '🐾' : <FaCamera size={24} color={theme.colors.textMuted} />}
           </div>
           <p style={{ fontSize: '12px', color: theme.colors.textMuted, margin: 0 }}>
             {activeTab === 'pet_menu'
@@ -172,8 +177,13 @@ export const MenuPhotosView: React.FC<MenuPhotosViewProps> = ({
                 borderRadius: '10px',
                 overflow: 'hidden',
                 cursor: 'pointer',
-                border: `1px solid ${theme.colors.borderLight}`,
+                border: photo.category === 'pet_menu'
+                  ? `2px solid ${theme.colors.terracotta}`
+                  : `1px solid ${theme.colors.borderLight}`,
                 backgroundColor: '#f3f4f6',
+                boxShadow: photo.category === 'pet_menu'
+                  ? '0 0 0 1px rgba(224,122,95,0.2)'
+                  : 'none',
               }}
             >
               <img

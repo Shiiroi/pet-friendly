@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
+import { FaCamera, FaUtensils } from 'react-icons/fa';
 import { theme } from '../../../shared/styles/theme';
 import type { MenuPhoto, MenuPhotoCategory } from '../../../shared/types/pet-menu';
 import { supabase } from '../../../shared/api/supabase-client';
@@ -143,8 +144,8 @@ export const UploadMenuPhotoModal: React.FC<UploadMenuPhotoModalProps> = ({
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
-            <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: theme.colors.textDark, fontFamily: theme.fonts.heading }}>
-              Upload Menu Photo 📷
+            <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: theme.colors.textDark, fontFamily: theme.fonts.heading, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <FaCamera color={theme.colors.terracotta} size={16} /> Upload Menu Photo
             </h3>
             <p style={{ fontSize: '12px', color: theme.colors.textMuted, margin: '2px 0 0 0' }}>
               {placeName}
@@ -225,9 +226,13 @@ export const UploadMenuPhotoModal: React.FC<UploadMenuPhotoModalProps> = ({
                 cursor: 'pointer',
                 textAlign: 'center',
                 transition: 'all 0.15s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
               }}
             >
-              🍽️ Regular Menu Photo
+              <FaUtensils size={13} /> Regular Menu Photo
             </button>
           </div>
         </div>
@@ -290,7 +295,9 @@ export const UploadMenuPhotoModal: React.FC<UploadMenuPhotoModalProps> = ({
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: '32px', marginBottom: '8px' }}>📷</div>
+              <div style={{ marginBottom: '8px' }}>
+                <FaCamera size={32} color={theme.colors.terracotta} />
+              </div>
               <span style={{ fontSize: '13px', fontWeight: 700, color: theme.colors.terracotta }}>
                 Tap to Select or Take Photo
               </span>

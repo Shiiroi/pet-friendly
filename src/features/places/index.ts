@@ -18,5 +18,6 @@ export { EditStoreHoursModal } from './components/EditStoreHoursModal';
 export { MenuPhotosView } from './components/MenuPhotosView';
 export { UploadMenuPhotoModal } from './components/UploadMenuPhotoModal';
 export { MenuPhotoLightboxModal } from './components/MenuPhotoLightboxModal';
+export { PlaceAddedModal } from './components/PlaceAddedModal';
 export type { PlaceInBounds, MapBounds } from '../../shared/types/geo';
 export type { GeocodingResult } from './api/search-google-places';

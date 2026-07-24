@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { FaBone } from 'react-icons/fa';
+import ReactDOM from 'react-dom';
+import { FaBone, FaClock, FaCamera, FaTimesCircle, FaQuestionCircle, FaExclamationTriangle, FaUsers, FaCalendarAlt, FaFlag } from 'react-icons/fa';
 import { theme } from '../../../shared/styles/theme';
 import { type PlaceInBounds, type ReportItem } from '../../../shared/types/geo';
 import { getDeviceId } from '../../../shared/utils/device-id';
+import { supabase } from '../../../shared/api/supabase-client';
 import { getConfidenceStyle } from '../../../shared/utils/confidence-color';
 import { StatusCard } from '../../../shared/components/StatusCard';
 import { StoreHoursView } from './StoreHoursView';
 import { EditStoreHoursModal } from './EditStoreHoursModal';
-import { MenuPhotosView } from './MenuPhotosView';
+import { UploadMenuPhotoModal } from './UploadMenuPhotoModal';
 import type { WeeklyOperatingHours } from '../types/hours';
-import type { MenuPhoto } from '../../../shared/types/pet-menu';
 
 interface PlaceDetailProps {
   /** The selected place record data. Can be a DB place or a temporary geocoded ghost place. */
@@ -42,8 +43,6 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
   isGhost = false,
   onClose,
   reports,
-  isLoading,
-  error,
   onReportClick,
   onFlagClick,
   onAddPlaceClick,
@@ -72,21 +71,17 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
     stroller: 'Stroller/Carrier',
   };
 
-  const claimColors: Record<string, string> = {
-    allowed: theme.colors.allowed,
-    not_allowed: theme.colors.notAllowed,
-    outdoor_only: theme.colors.outdoorOnly,
-  };
-
   const dbPlace = !isGhost ? (place as PlaceInBounds) : null;
   const [isEditHoursOpen, setIsEditHoursOpen] = useState(false);
   const [localHours, setLocalHours] = useState<WeeklyOperatingHours | null | undefined>(dbPlace?.operating_hours);
-  const [localPhotos, setLocalPhotos] = useState<MenuPhoto[]>(dbPlace?.menu_photos || []);
+  const [isUploadPhotoOpen, setIsUploadPhotoOpen] = useState(false);
+  const [petMenuVote, setPetMenuVote] = useState<'yes' | 'no' | 'not_sure' | null>(null);
+  const [isPetMenuModalOpen, setIsPetMenuModalOpen] = useState(false);
+  const [isPetMenuSubmitting, setIsPetMenuSubmitting] = useState(false);
 
   useEffect(() => {
     setLocalHours(dbPlace?.operating_hours);
-    setLocalPhotos(dbPlace?.menu_photos || []);
-  }, [dbPlace?.operating_hours, dbPlace?.menu_photos]);
+  }, [dbPlace?.operating_hours]);
 
   return (
     <div
@@ -213,20 +208,10 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
         </p>
 
         {!isGhost && (
-          <>
-            <StoreHoursView
-              hours={localHours}
-              onEditClick={dbPlace ? () => setIsEditHoursOpen(true) : undefined}
-            />
-            <MenuPhotosView
-              placeId={dbPlace?.id}
-              placeName={dbPlace?.name}
-              photos={localPhotos}
-              onPhotoUploaded={(newPhoto) => {
-                setLocalPhotos((prev) => [...prev, newPhoto]);
-              }}
-            />
-          </>
+          <StoreHoursView
+            hours={localHours}
+            onEditClick={dbPlace ? () => setIsEditHoursOpen(true) : undefined}
+          />
         )}
       </div>
 
@@ -292,12 +277,23 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                 : (dbPlace.claim ? claimLabels[dbPlace.claim] : 'No policy reports');
 
               const policyMicrocopy = policyDisputed && dbPlace.claim
-                ? `⚠️ Contradictory reports (${dbPlace.agreeing_devices} vs ${dbPlace.runner_up_agreeing_devices})`
+                ? `Contradictory (${dbPlace.agreeing_devices} vs ${dbPlace.runner_up_agreeing_devices})`
                 : dbPlace.claim
                   ? policyConfirmed
-                    ? `Confirmed by ${dbPlace.agreeing_devices} contributors`
-                    : `Reported by ${dbPlace.agreeing_devices} contributor${dbPlace.agreeing_devices === 1 ? '' : 's'} -- not yet confirmed`
+                    ? `Verified by ${dbPlace.agreeing_devices}`
+                    : `Reported by ${dbPlace.agreeing_devices}`
                   : 'No reports yet';
+
+              const latestReportDate = reports && reports.length > 0
+                ? new Date(Math.max(...reports.map((r) => new Date(r.created_at).getTime())))
+                : null;
+              const formattedLatestDate = latestReportDate
+                ? latestReportDate.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })
+                : null;
 
               const getPriceValueColor = (val: string | null) => {
                 if (val === 'budget') return '#2E7D32';
@@ -322,8 +318,8 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
 
               const getMenuValueIcon = (val: string | null) => {
                 if (val === 'yes') return <FaBone />;
-                if (val === 'no') return '❌';
-                if (val === 'not_sure') return '❓';
+                if (val === 'no') return <FaTimesCircle />;
+                if (val === 'not_sure') return <FaQuestionCircle />;
                 return null;
               };
 
@@ -364,17 +360,39 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                     >
                       {policyLabel}
                     </span>
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        fontWeight: 500,
-                        color: policyDisputed
-                          ? '#d97706'
-                          : (policyStyle.isSolid ? 'rgba(255,255,255,0.9)' : theme.colors.textMuted),
-                      }}
-                    >
-                      {policyMicrocopy}
-                    </span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', gap: '8px' }}>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          color: policyDisputed
+                            ? '#d97706'
+                            : (policyStyle.isSolid ? 'rgba(255,255,255,0.95)' : theme.colors.textMuted),
+                        }}
+                      >
+                        {policyDisputed ? <FaExclamationTriangle size={11} /> : <FaUsers size={11} />}
+                        {policyMicrocopy}
+                      </span>
+                      {formattedLatestDate && (
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 500,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            color: policyDisputed
+                              ? '#92400e'
+                              : (policyStyle.isSolid ? 'rgba(255,255,255,0.9)' : theme.colors.textMuted),
+                          }}
+                        >
+                          <FaCalendarAlt size={10} /> {formattedLatestDate}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Warm dispute helper — only shown when policy is actively contested */}
@@ -505,124 +523,6 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
             })()}
           </div>
 
-          <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 10px 0', color: theme.colors.textDark, fontFamily: theme.fonts.heading }}>
-            Recent Policy Reports
-          </h3>
-
-          <div style={{ maxHeight: '140px', overflowY: 'auto', paddingRight: '4px' }}>
-            {isLoading ? (
-              <p style={{ fontSize: '12px', color: theme.colors.textMuted }}>Loading reports...</p>
-            ) : error ? (
-              <p style={{ fontSize: '12px', color: theme.colors.notAllowed }}>Failed to load reports.</p>
-            ) : !reports || reports.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '12px 0', color: theme.colors.textMuted }}>
-                <span style={{ fontSize: '18px', display: 'block', marginBottom: '2px' }}>🐾</span>
-                <span style={{ fontSize: '11px', fontStyle: 'italic' }}>
-                  No reports yet -- be the first to verify!
-                </span>
-              </div>
-            ) : (
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {(() => {
-                  const seenDevices = new Set<string>();
-                  const uniqueReports = reports.filter((r) => {
-                    if (seenDevices.has(r.device_id)) return false;
-                    seenDevices.add(r.device_id);
-                    return true;
-                  });
-
-                  return uniqueReports.map((report, idx) => {
-                    const isOwnReport = report.device_id === getDeviceId();
-
-                    // Parse requirements note
-                    const reqLabelsList: string[] = [];
-
-                    if (report.notes) {
-                      const parts = report.notes.split(',').map((p) => p.trim());
-                      parts.forEach((part) => {
-                        if (part === 'diaper') {
-                          reqLabelsList.push('Diapers');
-                        } else if (part === 'caged') {
-                          reqLabelsList.push('Caged');
-                        } else if (part === 'stroller') {
-                          reqLabelsList.push('Stroller/Carrier');
-                        } else if (part === 'none') {
-                          reqLabelsList.push('None (Free Roam)');
-                        }
-                        // other: prefix and unknown values are silently ignored
-                      });
-                    }
-
-
-
-                    return (
-                      <li
-                        key={idx}
-                        style={{
-                          padding: '10px',
-                          borderRadius: '10px',
-                          backgroundColor: theme.colors.background,
-                          marginBottom: '8px',
-                          fontSize: '12px',
-                          border: `1px solid ${theme.colors.borderLight}`,
-                          borderLeft: `4px solid ${claimColors[report.claim]}`,
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span style={{ fontWeight: 700, color: claimColors[report.claim] }}>
-                            {claimLabels[report.claim]}
-                          </span>
-                          <span style={{ color: theme.colors.textMuted, fontSize: '10px' }}>
-                            {new Date(report.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                        {/* Price & menu info badges */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
-                          {report.price_range && (
-                            <span style={{ fontSize: '10px', color: theme.colors.textDark, backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', fontWeight: 500, border: '1px solid #e2e8f0' }}>
-                              Pricing: {priceRangeLabels[report.price_range]}
-                            </span>
-                          )}
-                          {report.pet_menu && (
-                            <span style={{ fontSize: '10px', color: theme.colors.textDark, backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', fontWeight: 500, border: '1px solid #e2e8f0' }}>
-                              Menu: {petMenuLabels[report.pet_menu]}
-                            </span>
-                          )}
-                        </div>
-                        {/* Requirement pills — render individual requirement badges */}
-                        {reqLabelsList.length > 0 && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', marginBottom: '6px' }}>
-                            {reqLabelsList.map((label) => (
-                              <span
-                                key={label}
-                                style={{
-                                  fontSize: '10px',
-                                  color: theme.colors.textDark,
-                                  backgroundColor: '#f1f5f9',
-                                  padding: '3px 8px',
-                                  borderRadius: '4px',
-                                  fontWeight: 500,
-                                  border: '1px solid #e2e8f0',
-                                }}
-                              >
-                                Req: {label}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
-                          <span style={{ fontSize: '10px', color: theme.colors.textMuted }}>
-                            by {isOwnReport ? 'You' : (report.nickname || 'Guest Contributor')}
-                          </span>
-                        </div>
-                      </li>
-                    );
-                  });
-                })()}
-              </ul>
-            )}
-          </div>
-
           {(() => {
             const userReported = reports.some((r) => r.device_id === getDeviceId());
             const ownReportsToday = reports.filter((r) => {
@@ -672,10 +572,90 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                 fontSize: '11px',
                 textDecoration: 'underline',
                 padding: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
               }}
             >
-              Flag this place ⚠️
+              Report Place <FaFlag size={10} />
             </button>
+          </div>
+
+          {/* ─── Help improve this listing CTA ─── */}
+          <div
+            style={{
+              marginTop: '20px',
+              paddingTop: '16px',
+              borderTop: `1px solid ${theme.colors.borderLight}`,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            }}
+          >
+            <p style={{ fontSize: '11px', fontWeight: 700, color: theme.colors.textMuted, margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Help improve this listing
+            </p>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setIsEditHoursOpen(true)}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '20px',
+                  border: `1px solid ${localHours ? theme.colors.terracotta : theme.colors.borderLight}`,
+                  backgroundColor: localHours ? theme.colors.softPink : '#f9fafb',
+                  color: localHours ? theme.colors.terracotta : theme.colors.textDark,
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                }}
+              >
+                <FaClock size={11} /> {localHours ? 'Edit Hours' : '+ Add Hours'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setPetMenuVote(null); setIsPetMenuModalOpen(true); }}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '20px',
+                  border: `1px solid ${theme.colors.borderLight}`,
+                  backgroundColor: '#f9fafb',
+                  color: theme.colors.textDark,
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                }}
+              >
+                <FaBone size={11} /> Pet Menu?
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsUploadPhotoOpen(true)}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '20px',
+                  border: `1px solid ${theme.colors.borderLight}`,
+                  backgroundColor: '#f9fafb',
+                  color: theme.colors.textDark,
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                }}
+              >
+                <FaCamera size={11} /> Upload Menu Photo
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -688,6 +668,134 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
           onClose={() => setIsEditHoursOpen(false)}
           onSuccess={(updated) => setLocalHours(updated)}
         />
+      )}
+
+      {isUploadPhotoOpen && dbPlace && (
+        <UploadMenuPhotoModal
+          placeId={dbPlace.id}
+          placeName={dbPlace.name}
+          onClose={() => setIsUploadPhotoOpen(false)}
+          onSuccess={() => {
+            setIsUploadPhotoOpen(false);
+          }}
+        />
+      )}
+
+      {/* Pet Menu popup modal */}
+      {isPetMenuModalOpen && dbPlace && ReactDOM.createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            zIndex: 9999,
+          }}
+          onClick={() => setIsPetMenuModalOpen(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '24px 24px 0 0',
+              padding: '24px 20px 36px',
+              width: '100%',
+              maxWidth: '480px',
+              boxSizing: 'border-box',
+              boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: '#e5e7eb', margin: '0 auto 20px' }} />
+
+            <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 6px 0', color: theme.colors.textDark, fontFamily: theme.fonts.heading, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <FaBone color={theme.colors.terracotta} size={16} /> Pet Menu?
+            </h3>
+            <p style={{ fontSize: '13px', color: theme.colors.textMuted, margin: '0 0 18px 0' }}>
+              Does <strong>{dbPlace.name}</strong> have a dedicated pet menu (treats, puppuccinos, etc.)?
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px', marginBottom: '18px' }}>
+              {[
+                { id: 'yes', label: 'Yes 🐾', sub: 'Has pet menu', icon: null },
+                { id: 'no', label: 'No', sub: 'None offered', icon: <FaTimesCircle size={12} /> },
+                { id: 'not_sure', label: 'Not Sure', sub: 'Unsure', icon: <FaQuestionCircle size={12} /> },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setPetMenuVote(opt.id as any)}
+                  style={{
+                    padding: '14px 8px',
+                    borderRadius: '14px',
+                    border: petMenuVote === opt.id ? `2px solid ${theme.colors.terracotta}` : `1px solid ${theme.colors.borderLight}`,
+                    backgroundColor: petMenuVote === opt.id ? theme.colors.softPink : '#ffffff',
+                    color: petMenuVote === opt.id ? theme.colors.terracotta : theme.colors.textDark,
+                    fontWeight: petMenuVote === opt.id ? 700 : 500,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.15s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {opt.label} {opt.icon}
+                  </span>
+                  <span style={{ fontSize: '10px', opacity: 0.7 }}>{opt.sub}</span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              disabled={!petMenuVote || isPetMenuSubmitting}
+              onClick={async () => {
+                if (!petMenuVote) return;
+                setIsPetMenuSubmitting(true);
+                try {
+                  await (supabase.rpc as any)('create_pet_policy_report', {
+                    p_place_id: dbPlace.id,
+                    p_device_id: getDeviceId(),
+                    p_claim: null,
+                    p_pet_menu: petMenuVote,
+                    p_price_range: null,
+                    p_notes: null,
+                  });
+                  setIsPetMenuModalOpen(false);
+                  setPetMenuVote(null);
+                } catch {
+                  // fail silently
+                } finally {
+                  setIsPetMenuSubmitting(false);
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '15px',
+                borderRadius: '14px',
+                border: 'none',
+                backgroundColor: petMenuVote ? theme.colors.terracotta : '#e5e7eb',
+                color: petMenuVote ? '#ffffff' : '#9ca3af',
+                fontSize: '15px',
+                fontWeight: 700,
+                cursor: petMenuVote ? 'pointer' : 'not-allowed',
+                boxShadow: petMenuVote ? '0 4px 14px rgba(224,122,95,0.3)' : 'none',
+                transition: 'all 0.2s ease',
+                fontFamily: theme.fonts.heading,
+              }}
+            >
+              {isPetMenuSubmitting ? 'Submitting...' : 'Submit Answer'}
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

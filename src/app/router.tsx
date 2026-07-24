@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { FaFlag } from 'react-icons/fa';
 import { supabase } from '../shared/api/supabase-client';
 import { getDeviceId } from '../shared/utils/device-id';
 import { Hero, BrowsableList, HowItWorks, FAQ } from '../features/home';
@@ -13,6 +14,7 @@ import {
   loadGoogleMapsScript,
   AddPlaceForm
 } from '../features/places';
+import { PlaceAddedModal } from '../features/places/components/PlaceAddedModal';
 import { useReportsForPlace, ReportForm, FlagButton } from '../features/reports';
 import { NicknamePrompt } from '../features/devices';
 import { useOutboxSync } from '../shared/outbox/use-outbox-sync';
@@ -32,6 +34,7 @@ const HomePage: React.FC = () => {
   const [reportingPlace, setReportingPlace] = useState<PlaceInBounds | null>(null);
   const [flaggingPlace, setFlaggingPlace] = useState<PlaceInBounds | null>(null);
   const [showNicknamePrompt, setShowNicknamePrompt] = useState(false);
+  const [placeAdded, setPlaceAdded] = useState<{ id: string; name: string; hours?: any } | null>(null);
 
   const queryClient = useQueryClient();
   const listRef = useRef<HTMLDivElement>(null);
@@ -99,6 +102,19 @@ const HomePage: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['reports-for-place'] });
     queryClient.invalidateQueries({ queryKey: ['home-stats'] });
     setGhostPlace(null);
+  };
+
+  /**
+   * Called by AddPlaceForm after a new place is successfully created.
+   * Stashes the new place info so PlaceAddedModal can be shown.
+   */
+  const handleAddPlaceSuccess = (newPlaceId: string, placeName: string, autoHours?: any) => {
+    handleFormSuccess();
+    setIsAddingPlace(false);
+    setGhostPlace(null);
+    if (newPlaceId && newPlaceId !== 'offline') {
+      setPlaceAdded({ id: newPlaceId, name: placeName, hours: autoHours });
+    }
   };
 
   const handleNicknameSubmit = async (nickname: string) => {
@@ -208,7 +224,7 @@ const HomePage: React.FC = () => {
                     setIsAddingPlace(false);
                     setGhostPlace(null);
                   }}
-                  onSuccess={handleFormSuccess}
+                  onSuccess={handleAddPlaceSuccess}
                   onTriggerNicknamePrompt={() => setShowNicknamePrompt(true)}
                 />
               </div>
@@ -255,33 +271,19 @@ const HomePage: React.FC = () => {
                   boxSizing: 'border-box',
                 }}
               >
-                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#ef4444' }}>
-                  Flag Spot: {flaggingPlace.name}
+                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 800, color: '#dc2626', display: 'flex', alignItems: 'center', gap: '8px', fontFamily: theme.fonts.heading }}>
+                  <FaFlag size={16} /> Report Place: {flaggingPlace.name}
                 </h3>
                 <FlagButton
                   place={flaggingPlace}
+                  initialOpen={true}
+                  onClose={() => setFlaggingPlace(null)}
                   onSuccess={() => {
                     setFlaggingPlace(null);
                     handleFormSuccess();
                   }}
                   onTriggerNicknamePrompt={() => setShowNicknamePrompt(true)}
                 />
-                <button
-                  onClick={() => setFlaggingPlace(null)}
-                  style={{
-                    width: '100%',
-                    marginTop: '16px',
-                    padding: '10px',
-                    backgroundColor: '#f3f4f6',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                  }}
-                >
-                  Cancel Flag Action
-                </button>
               </div>
             )}
 
@@ -335,6 +337,16 @@ const HomePage: React.FC = () => {
         onClose={() => setShowNicknamePrompt(false)}
         onSubmitNickname={handleNicknameSubmit}
       />
+
+      {/* Post-submission progressive disclosure — shown after a new place is added */}
+      {placeAdded && (
+        <PlaceAddedModal
+          placeId={placeAdded.id}
+          placeName={placeAdded.name}
+          autoHours={placeAdded.hours}
+          onDone={() => setPlaceAdded(null)}
+        />
+      )}
 
       {/* 6. Sync status toast indicator */}
       {syncStatus && (
