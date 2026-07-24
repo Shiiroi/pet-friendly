@@ -205,6 +205,88 @@ const MapController: React.FC<{ center: [number, number] | null }> = ({ center }
   return null;
 };
 
+const ZoomControls: React.FC = () => {
+  const map = useMap();
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: '80px',
+        right: '16px',
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#ffffff',
+        borderRadius: '12px',
+        boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
+        overflow: 'hidden',
+        border: `1px solid ${theme.colors.borderLight}`,
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => map.zoomIn()}
+        aria-label="Zoom in"
+        style={{
+          width: '36px',
+          height: '36px',
+          backgroundColor: '#ffffff',
+          border: 'none',
+          borderBottom: `1px solid ${theme.colors.borderLight}`,
+          color: theme.colors.textDark,
+          fontSize: '18px',
+          fontWeight: 700,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.15s ease',
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.backgroundColor = theme.colors.softPink;
+          e.currentTarget.style.color = theme.colors.terracotta;
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.backgroundColor = '#ffffff';
+          e.currentTarget.style.color = theme.colors.textDark;
+        }}
+      >
+        +
+      </button>
+      <button
+        type="button"
+        onClick={() => map.zoomOut()}
+        aria-label="Zoom out"
+        style={{
+          width: '36px',
+          height: '36px',
+          backgroundColor: '#ffffff',
+          border: 'none',
+          color: theme.colors.textDark,
+          fontSize: '18px',
+          fontWeight: 700,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.15s ease',
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.backgroundColor = theme.colors.softPink;
+          e.currentTarget.style.color = theme.colors.terracotta;
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.backgroundColor = '#ffffff';
+          e.currentTarget.style.color = theme.colors.textDark;
+        }}
+      >
+        −
+      </button>
+    </div>
+  );
+};
+
 const ClusterMarker: React.FC<{
   clusterId: number;
   lat: number;
@@ -366,6 +448,7 @@ export const MapView: React.FC<MapViewProps> = ({
           onMapBoundsUpdate={setMapBounds}
         />
         <MapController center={centerOverride} />
+        <ZoomControls />
 
         {/* Render Supercluster points and centroids */}
         {clusters.map((feature, idx) => {
