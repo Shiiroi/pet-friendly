@@ -45,12 +45,14 @@ const SATELLITE_STYLE: maplibregl.StyleSpecification = {
       type: 'raster',
       tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
       tileSize: 256,
+      maxzoom: 17,
       attribution: 'Tiles &copy; Esri',
     },
     'carto-labels': {
       type: 'raster',
       tiles: ['https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png'],
       tileSize: 256,
+      maxzoom: 17,
     },
   },
   layers: [
@@ -64,19 +66,22 @@ const TILE_STYLES = [
     id: 'default',
     label: 'Default',
     Icon: FaMap,
-    styleUrl: 'https://tiles.openfreemap.org/styles/liberty',
+    style: 'https://tiles.openfreemap.org/styles/liberty',
+    maxZoom: 20,
   },
   {
     id: 'osm',
     label: 'Detailed',
     Icon: FaCity,
-    styleUrl: 'https://tiles.openfreemap.org/styles/bright',
+    style: 'https://tiles.openfreemap.org/styles/bright',
+    maxZoom: 20,
   },
   {
     id: 'satellite',
     label: 'Satellite',
     Icon: FaSatellite,
-    styleObj: SATELLITE_STYLE,
+    style: SATELLITE_STYLE,
+    maxZoom: 17,
   },
 ] as const;
 
@@ -288,12 +293,14 @@ export const MapView: React.FC<MapViewProps> = ({
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
+    const initialItem = TILE_STYLES.find((s) => s.id === tileStyle) || TILE_STYLES[0];
+
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: SATELLITE_STYLE, // start with reliable inline style, then load active tileStyle
+      style: initialItem.style as any,
       center: MANILA_CENTER,
       zoom: DEFAULT_ZOOM,
-      maxZoom: 20,
+      maxZoom: initialItem.maxZoom,
       minZoom: 5,
     });
 
@@ -324,31 +331,18 @@ export const MapView: React.FC<MapViewProps> = ({
     };
   }, []);
 
-  // Load style when tileStyle changes
+  // Update style and per-style maxZoom when tileStyle changes
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     const selected = TILE_STYLES.find((s) => s.id === tileStyle) || TILE_STYLES[0];
 
-    if ('styleObj' in selected && selected.styleObj) {
-      map.setStyle(selected.styleObj as any);
-    } else if ('styleUrl' in selected && selected.styleUrl) {
-      fetch(selected.styleUrl)
-        .then((res) => res.json())
-        .then((styleJson) => {
-          styleJson.glyphs = 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf';
-          if (mapRef.current) {
-            mapRef.current.setStyle(styleJson);
-          }
-        })
-        .catch((err) => {
-          console.warn('[Vector Style Fetch Warning]:', err);
-          if (mapRef.current) {
-            mapRef.current.setStyle(selected.styleUrl);
-          }
-        });
+    map.setMaxZoom(selected.maxZoom);
+    if (map.getZoom() > selected.maxZoom) {
+      map.setZoom(selected.maxZoom);
     }
+    map.setStyle(selected.style as any);
   }, [tileStyle]);
 
   // Center override navigation
