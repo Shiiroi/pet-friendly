@@ -362,31 +362,32 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                     >
                       {policyLabel}
                     </span>
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        fontWeight: 500,
-                        color: policyDisputed
-                          ? '#d97706'
-                          : (policyStyle.isSolid ? 'rgba(255,255,255,0.9)' : theme.colors.textMuted),
-                      }}
-                    >
-                      {policyMicrocopy}
-                    </span>
-                    {formattedLatestDate && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px', gap: '8px' }}>
                       <span
                         style={{
-                          fontSize: '10px',
+                          fontSize: '11px',
                           fontWeight: 500,
                           color: policyDisputed
-                            ? '#92400e'
-                            : (policyStyle.isSolid ? 'rgba(255,255,255,0.85)' : theme.colors.textMuted),
-                          marginTop: '2px',
+                            ? '#d97706'
+                            : (policyStyle.isSolid ? 'rgba(255,255,255,0.9)' : theme.colors.textMuted),
                         }}
                       >
-                        Last update: {formattedLatestDate}
+                        {policyMicrocopy}
                       </span>
-                    )}
+                      {formattedLatestDate && (
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 500,
+                            color: policyDisputed
+                              ? '#92400e'
+                              : (policyStyle.isSolid ? 'rgba(255,255,255,0.85)' : theme.colors.textMuted),
+                          }}
+                        >
+                          Last update: {formattedLatestDate}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Warm dispute helper — only shown when policy is actively contested */}
