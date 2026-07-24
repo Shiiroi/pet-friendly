@@ -194,6 +194,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
       if (error) throw error;
       if (!newPlaceId) throw new Error('Transaction returned empty response.');
 
+
       // 5. Trigger nickname prompt overlay if needed
       triggerNicknamePromptFlow();
       onSuccess();
@@ -601,6 +602,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
                 Unsure
               </label>
             </div>
+
           </div>
 
           <div style={{ marginBottom: '20px', borderTop: '1px solid #eee', paddingTop: '12px' }}>

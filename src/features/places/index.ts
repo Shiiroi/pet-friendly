@@ -1,5 +1,6 @@
 export type { Place } from './types';
 export type * from './types/hours';
+export type * from '../../shared/types/pet-menu';
 export { DAYS_OF_WEEK, DAY_LABELS, SHORT_DAY_LABELS } from './types/hours';
 export { searchGooglePlaces, loadGoogleMapsScript } from './api/search-google-places';
 export { getPlacesInBounds } from './api/get-places-in-bounds';
@@ -14,5 +15,8 @@ export { AddPlaceForm } from './components/AddPlaceForm';
 export { StoreHoursView } from './components/StoreHoursView';
 export { StoreHoursFormInput } from './components/StoreHoursFormInput';
 export { EditStoreHoursModal } from './components/EditStoreHoursModal';
+export { MenuPhotosView } from './components/MenuPhotosView';
+export { UploadMenuPhotoModal } from './components/UploadMenuPhotoModal';
+export { MenuPhotoLightboxModal } from './components/MenuPhotoLightboxModal';
 export type { PlaceInBounds, MapBounds } from '../../shared/types/geo';
 export type { GeocodingResult } from './api/search-google-places';

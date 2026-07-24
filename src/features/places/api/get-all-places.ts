@@ -39,5 +39,7 @@ export async function getAllPlaces(): Promise<PlaceInBounds[]> {
     runner_up_price_range: (row.runner_up_price_range as PlaceInBounds['runner_up_price_range']) || null,
     price_range_runner_up_agreeing_devices: row.price_range_runner_up_agreeing_devices || 0,
     operating_hours: row.operating_hours || null,
+    pet_menu_details: row.pet_menu_details || null,
+    menu_photos: row.menu_photos || [],
   }));
 }

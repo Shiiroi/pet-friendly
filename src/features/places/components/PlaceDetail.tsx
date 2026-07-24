@@ -7,7 +7,9 @@ import { getConfidenceStyle } from '../../../shared/utils/confidence-color';
 import { StatusCard } from '../../../shared/components/StatusCard';
 import { StoreHoursView } from './StoreHoursView';
 import { EditStoreHoursModal } from './EditStoreHoursModal';
+import { MenuPhotosView } from './MenuPhotosView';
 import type { WeeklyOperatingHours } from '../types/hours';
+import type { MenuPhoto } from '../../../shared/types/pet-menu';
 
 interface PlaceDetailProps {
   /** The selected place record data. Can be a DB place or a temporary geocoded ghost place. */
@@ -79,10 +81,12 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
   const dbPlace = !isGhost ? (place as PlaceInBounds) : null;
   const [isEditHoursOpen, setIsEditHoursOpen] = useState(false);
   const [localHours, setLocalHours] = useState<WeeklyOperatingHours | null | undefined>(dbPlace?.operating_hours);
+  const [localPhotos, setLocalPhotos] = useState<MenuPhoto[]>(dbPlace?.menu_photos || []);
 
   useEffect(() => {
     setLocalHours(dbPlace?.operating_hours);
-  }, [dbPlace?.operating_hours]);
+    setLocalPhotos(dbPlace?.menu_photos || []);
+  }, [dbPlace?.operating_hours, dbPlace?.menu_photos]);
 
   return (
     <div
@@ -209,10 +213,20 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
         </p>
 
         {!isGhost && (
-          <StoreHoursView
-            hours={localHours}
-            onEditClick={dbPlace ? () => setIsEditHoursOpen(true) : undefined}
-          />
+          <>
+            <StoreHoursView
+              hours={localHours}
+              onEditClick={dbPlace ? () => setIsEditHoursOpen(true) : undefined}
+            />
+            <MenuPhotosView
+              placeId={dbPlace?.id}
+              placeName={dbPlace?.name}
+              photos={localPhotos}
+              onPhotoUploaded={(newPhoto) => {
+                setLocalPhotos((prev) => [...prev, newPhoto]);
+              }}
+            />
+          </>
         )}
       </div>
 
