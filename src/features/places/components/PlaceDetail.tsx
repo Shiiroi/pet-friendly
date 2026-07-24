@@ -43,8 +43,8 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
   isGhost = false,
   onClose,
   reports,
-  isLoading,
-  error,
+  isLoading: _isLoading,
+  error: _error,
   onReportClick,
   onFlagClick,
   onAddPlaceClick,
@@ -71,12 +71,6 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
     diaper: 'Diapers',
     caged: 'Caged',
     stroller: 'Stroller/Carrier',
-  };
-
-  const claimColors: Record<string, string> = {
-    allowed: theme.colors.allowed,
-    not_allowed: theme.colors.notAllowed,
-    outdoor_only: theme.colors.outdoorOnly,
   };
 
   const dbPlace = !isGhost ? (place as PlaceInBounds) : null;
@@ -292,6 +286,17 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                     : `Reported by ${dbPlace.agreeing_devices} contributor${dbPlace.agreeing_devices === 1 ? '' : 's'} -- not yet confirmed`
                   : 'No reports yet';
 
+              const latestReportDate = reports && reports.length > 0
+                ? new Date(Math.max(...reports.map((r) => new Date(r.created_at).getTime())))
+                : null;
+              const formattedLatestDate = latestReportDate
+                ? latestReportDate.toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })
+                : null;
+
               const getPriceValueColor = (val: string | null) => {
                 if (val === 'budget') return '#2E7D32';
                 if (val === 'mid') return '#EF6C00';
@@ -368,6 +373,20 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                     >
                       {policyMicrocopy}
                     </span>
+                    {formattedLatestDate && (
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          fontWeight: 500,
+                          color: policyDisputed
+                            ? '#92400e'
+                            : (policyStyle.isSolid ? 'rgba(255,255,255,0.85)' : theme.colors.textMuted),
+                          marginTop: '2px',
+                        }}
+                      >
+                        Last update: {formattedLatestDate}
+                      </span>
+                    )}
                   </div>
 
                   {/* Warm dispute helper — only shown when policy is actively contested */}
@@ -496,124 +515,6 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                 </div>
               );
             })()}
-          </div>
-
-          <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 10px 0', color: theme.colors.textDark, fontFamily: theme.fonts.heading }}>
-            Recent Policy Reports
-          </h3>
-
-          <div style={{ maxHeight: '140px', overflowY: 'auto', paddingRight: '4px' }}>
-            {isLoading ? (
-              <p style={{ fontSize: '12px', color: theme.colors.textMuted }}>Loading reports...</p>
-            ) : error ? (
-              <p style={{ fontSize: '12px', color: theme.colors.notAllowed }}>Failed to load reports.</p>
-            ) : !reports || reports.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '12px 0', color: theme.colors.textMuted }}>
-                <span style={{ fontSize: '18px', display: 'block', marginBottom: '2px' }}>🐾</span>
-                <span style={{ fontSize: '11px', fontStyle: 'italic' }}>
-                  No reports yet -- be the first to verify!
-                </span>
-              </div>
-            ) : (
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {(() => {
-                  const seenDevices = new Set<string>();
-                  const uniqueReports = reports.filter((r) => {
-                    if (seenDevices.has(r.device_id)) return false;
-                    seenDevices.add(r.device_id);
-                    return true;
-                  });
-
-                  return uniqueReports.map((report, idx) => {
-                    const isOwnReport = report.device_id === getDeviceId();
-
-                    // Parse requirements note
-                    const reqLabelsList: string[] = [];
-
-                    if (report.notes) {
-                      const parts = report.notes.split(',').map((p) => p.trim());
-                      parts.forEach((part) => {
-                        if (part === 'diaper') {
-                          reqLabelsList.push('Diapers');
-                        } else if (part === 'caged') {
-                          reqLabelsList.push('Caged');
-                        } else if (part === 'stroller') {
-                          reqLabelsList.push('Stroller/Carrier');
-                        } else if (part === 'none') {
-                          reqLabelsList.push('None (Free Roam)');
-                        }
-                        // other: prefix and unknown values are silently ignored
-                      });
-                    }
-
-
-
-                    return (
-                      <li
-                        key={idx}
-                        style={{
-                          padding: '10px',
-                          borderRadius: '10px',
-                          backgroundColor: theme.colors.background,
-                          marginBottom: '8px',
-                          fontSize: '12px',
-                          border: `1px solid ${theme.colors.borderLight}`,
-                          borderLeft: `4px solid ${claimColors[report.claim]}`,
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span style={{ fontWeight: 700, color: claimColors[report.claim] }}>
-                            {claimLabels[report.claim]}
-                          </span>
-                          <span style={{ color: theme.colors.textMuted, fontSize: '10px' }}>
-                            {new Date(report.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                        {/* Price & menu info badges */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
-                          {report.price_range && (
-                            <span style={{ fontSize: '10px', color: theme.colors.textDark, backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', fontWeight: 500, border: '1px solid #e2e8f0' }}>
-                              Pricing: {priceRangeLabels[report.price_range]}
-                            </span>
-                          )}
-                          {report.pet_menu && (
-                            <span style={{ fontSize: '10px', color: theme.colors.textDark, backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', fontWeight: 500, border: '1px solid #e2e8f0' }}>
-                              Menu: {petMenuLabels[report.pet_menu]}
-                            </span>
-                          )}
-                        </div>
-                        {/* Requirement pills — render individual requirement badges */}
-                        {reqLabelsList.length > 0 && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', marginBottom: '6px' }}>
-                            {reqLabelsList.map((label) => (
-                              <span
-                                key={label}
-                                style={{
-                                  fontSize: '10px',
-                                  color: theme.colors.textDark,
-                                  backgroundColor: '#f1f5f9',
-                                  padding: '3px 8px',
-                                  borderRadius: '4px',
-                                  fontWeight: 500,
-                                  border: '1px solid #e2e8f0',
-                                }}
-                              >
-                                Req: {label}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
-                          <span style={{ fontSize: '10px', color: theme.colors.textMuted }}>
-                            by {isOwnReport ? 'You' : (report.nickname || 'Guest Contributor')}
-                          </span>
-                        </div>
-                      </li>
-                    );
-                  });
-                })()}
-              </ul>
-            )}
           </div>
 
           {(() => {
