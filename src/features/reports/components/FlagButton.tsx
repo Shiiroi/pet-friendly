@@ -119,10 +119,6 @@ export const FlagButton: React.FC<FlagButtonProps> = ({
             gap: '14px',
           }}
         >
-          <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#991b1b', display: 'flex', alignItems: 'center', gap: '6px', fontFamily: theme.fonts.heading }}>
-            <FaFlag size={14} color="#dc2626" /> Report Place for Review
-          </h4>
-
           {errorMsg && (
             <div style={{ color: '#dc2626', fontSize: '12px', fontWeight: 500 }}>
               {errorMsg}
