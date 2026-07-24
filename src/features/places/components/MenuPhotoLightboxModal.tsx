@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
+import { FaUtensils } from 'react-icons/fa';
 import { theme } from '../../../shared/styles/theme';
 import type { MenuPhoto } from '../../../shared/types/pet-menu';
 
@@ -71,9 +72,12 @@ export const MenuPhotoLightboxModal: React.FC<MenuPhotoLightboxModalProps> = ({
               color: '#ffffff',
               fontSize: '12px',
               fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
             }}
           >
-            {currentPhoto.category === 'pet_menu' ? '🐾 Pet Menu' : '🍽️ Regular Menu'}
+            {currentPhoto.category === 'pet_menu' ? '🐾 Pet Menu' : <><FaUtensils size={11} /> Regular Menu</>}
           </span>
           <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>
             {currentIndex + 1} of {photos.length}

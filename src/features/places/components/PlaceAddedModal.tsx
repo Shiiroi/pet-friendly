@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
+import { FaGlassCheers, FaBone, FaClock, FaCamera, FaTimesCircle, FaMagic } from 'react-icons/fa';
 import { theme } from '../../../shared/styles/theme';
 import { supabase } from '../../../shared/api/supabase-client';
 import type { WeeklyOperatingHours } from '../types/hours';
@@ -110,7 +111,9 @@ export const PlaceAddedModal: React.FC<PlaceAddedModalProps> = ({
           <>
             {/* Success Prompt Step */}
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <div style={{ fontSize: '48px', lineHeight: 1, marginBottom: '12px' }}>🎉</div>
+              <div style={{ fontSize: '48px', lineHeight: 1, marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
+                <FaGlassCheers color={theme.colors.terracotta} size={48} />
+              </div>
               <h2
                 style={{
                   fontSize: '22px',
@@ -144,9 +147,13 @@ export const PlaceAddedModal: React.FC<PlaceAddedModalProps> = ({
                   cursor: 'pointer',
                   boxShadow: '0 4px 14px rgba(224,122,95,0.35)',
                   fontFamily: theme.fonts.heading,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
                 }}
               >
-                Add Details Now ✨
+                Add Details Now <FaMagic size={14} />
               </button>
               <button
                 type="button"
@@ -194,19 +201,19 @@ export const PlaceAddedModal: React.FC<PlaceAddedModalProps> = ({
 
             {/* Pet Menu Question */}
             <div style={{ marginBottom: '18px' }}>
-              <p style={{ fontSize: '13px', fontWeight: 700, color: theme.colors.textDark, margin: '0 0 8px 0' }}>
-                🦴 Does this place have a pet menu?
+              <p style={{ fontSize: '13px', fontWeight: 700, color: theme.colors.textDark, margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <FaBone color={theme.colors.terracotta} size={14} /> Does this place have a pet menu?
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px' }}>
-                {([
-                  { id: 'yes', label: 'Yes 🐾' },
-                  { id: 'no', label: 'No ❌' },
-                  { id: 'not_sure', label: 'Not Sure' },
-                ] as const).map((opt) => (
+                {[
+                  { id: 'yes', label: 'Yes 🐾', icon: null },
+                  { id: 'no', label: 'No', icon: <FaTimesCircle size={12} /> },
+                  { id: 'not_sure', label: 'Not Sure', icon: null },
+                ].map((opt) => (
                   <button
                     key={opt.id}
                     type="button"
-                    onClick={() => setPetMenu(opt.id)}
+                    onClick={() => setPetMenu(opt.id as any)}
                     style={{
                       padding: '10px 6px',
                       borderRadius: '12px',
@@ -217,9 +224,13 @@ export const PlaceAddedModal: React.FC<PlaceAddedModalProps> = ({
                       fontSize: '12px',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
                     }}
                   >
-                    {opt.label}
+                    {opt.label} {opt.icon}
                   </button>
                 ))}
               </div>
@@ -250,8 +261,8 @@ export const PlaceAddedModal: React.FC<PlaceAddedModalProps> = ({
                     }}
                     style={{ width: '18px', height: '18px', accentColor: theme.colors.terracotta, cursor: 'pointer' }}
                   />
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: theme.colors.textDark }}>
-                    ⏰ Add Operating Hours
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: theme.colors.textDark, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <FaClock size={13} color={theme.colors.terracotta} /> Add Operating Hours
                   </span>
                 </div>
                 {autoHours && (
@@ -267,8 +278,8 @@ export const PlaceAddedModal: React.FC<PlaceAddedModalProps> = ({
 
             {/* Menu / Photo Upload */}
             <div style={{ marginBottom: '20px' }}>
-              <p style={{ fontSize: '13px', fontWeight: 700, color: theme.colors.textDark, margin: '0 0 8px 0' }}>
-                📷 Menu Photos
+              <p style={{ fontSize: '13px', fontWeight: 700, color: theme.colors.textDark, margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <FaCamera color={theme.colors.terracotta} size={14} /> Menu Photos
               </p>
               {uploadedPhotos.length > 0 && (
                 <div
@@ -320,7 +331,7 @@ export const PlaceAddedModal: React.FC<PlaceAddedModalProps> = ({
                   gap: '8px',
                 }}
               >
-                📷 Upload Menu / Photo
+                <FaCamera size={14} /> Upload Menu / Photo
                 <span style={{ fontSize: '11px', color: theme.colors.textMuted, fontWeight: 400 }}>
                   (Menu board, pet menu, etc.)
                 </span>

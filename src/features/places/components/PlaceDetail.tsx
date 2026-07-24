@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { FaBone } from 'react-icons/fa';
+import { FaBone, FaClock, FaCamera, FaTimesCircle, FaQuestionCircle, FaExclamationTriangle, FaUsers, FaCalendarAlt } from 'react-icons/fa';
 import { theme } from '../../../shared/styles/theme';
 import { type PlaceInBounds, type ReportItem } from '../../../shared/types/geo';
 import { getDeviceId } from '../../../shared/utils/device-id';
@@ -279,11 +279,11 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                 : (dbPlace.claim ? claimLabels[dbPlace.claim] : 'No policy reports');
 
               const policyMicrocopy = policyDisputed && dbPlace.claim
-                ? `⚠️ Contradictory (${dbPlace.agreeing_devices} vs ${dbPlace.runner_up_agreeing_devices})`
+                ? `Contradictory (${dbPlace.agreeing_devices} vs ${dbPlace.runner_up_agreeing_devices})`
                 : dbPlace.claim
                   ? policyConfirmed
-                    ? `👥 Verified by ${dbPlace.agreeing_devices}`
-                    : `👥 Reported by ${dbPlace.agreeing_devices}`
+                    ? `Verified by ${dbPlace.agreeing_devices}`
+                    : `Reported by ${dbPlace.agreeing_devices}`
                   : 'No reports yet';
 
               const latestReportDate = reports && reports.length > 0
@@ -320,8 +320,8 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
 
               const getMenuValueIcon = (val: string | null) => {
                 if (val === 'yes') return <FaBone />;
-                if (val === 'no') return '❌';
-                if (val === 'not_sure') return '❓';
+                if (val === 'no') return <FaTimesCircle />;
+                if (val === 'not_sure') return <FaQuestionCircle />;
                 return null;
               };
 
@@ -367,11 +367,15 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                         style={{
                           fontSize: '11px',
                           fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
                           color: policyDisputed
                             ? '#d97706'
                             : (policyStyle.isSolid ? 'rgba(255,255,255,0.95)' : theme.colors.textMuted),
                         }}
                       >
+                        {policyDisputed ? <FaExclamationTriangle size={11} /> : <FaUsers size={11} />}
                         {policyMicrocopy}
                       </span>
                       {formattedLatestDate && (
@@ -379,12 +383,15 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                           style={{
                             fontSize: '11px',
                             fontWeight: 500,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
                             color: policyDisputed
                               ? '#92400e'
                               : (policyStyle.isSolid ? 'rgba(255,255,255,0.9)' : theme.colors.textMuted),
                           }}
                         >
-                          🗓 {formattedLatestDate}
+                          <FaCalendarAlt size={10} /> {formattedLatestDate}
                         </span>
                       )}
                     </div>
@@ -567,9 +574,12 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                 fontSize: '11px',
                 textDecoration: 'underline',
                 padding: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
               }}
             >
-              Flag this place ⚠️
+              Flag this place <FaExclamationTriangle size={10} />
             </button>
           </div>
 
@@ -602,10 +612,10 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
+                  gap: '5px',
                 }}
               >
-                ⏰ {localHours ? 'Edit Hours' : '+ Add Hours'}
+                <FaClock size={11} /> {localHours ? 'Edit Hours' : '+ Add Hours'}
               </button>
 
               <button
@@ -622,10 +632,10 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
+                  gap: '5px',
                 }}
               >
-                🦴 Pet Menu?
+                <FaBone size={11} /> Pet Menu?
               </button>
 
               <button
@@ -642,10 +652,10 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
+                  gap: '5px',
                 }}
               >
-                📷 Upload Menu Photo
+                <FaCamera size={11} /> Upload Menu Photo
               </button>
             </div>
           </div>
@@ -703,19 +713,23 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
             {/* Handle */}
             <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: '#e5e7eb', margin: '0 auto 20px' }} />
 
-            <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 6px 0', color: theme.colors.textDark, fontFamily: theme.fonts.heading }}>
-              🦴 Pet Menu?
+            <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 6px 0', color: theme.colors.textDark, fontFamily: theme.fonts.heading, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <FaBone color={theme.colors.terracotta} size={16} /> Pet Menu?
             </h3>
             <p style={{ fontSize: '13px', color: theme.colors.textMuted, margin: '0 0 18px 0' }}>
               Does <strong>{dbPlace.name}</strong> have a dedicated pet menu (treats, puppuccinos, etc.)?
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px', marginBottom: '18px' }}>
-              {([{ id: 'yes', label: 'Yes 🐾', sub: 'Has pet menu' }, { id: 'no', label: 'No ❌', sub: 'None offered' }, { id: 'not_sure', label: 'Not Sure 🤔', sub: 'Unsure' }] as const).map((opt) => (
+              {[
+                { id: 'yes', label: 'Yes 🐾', sub: 'Has pet menu', icon: null },
+                { id: 'no', label: 'No', sub: 'None offered', icon: <FaTimesCircle size={12} /> },
+                { id: 'not_sure', label: 'Not Sure', sub: 'Unsure', icon: <FaQuestionCircle size={12} /> },
+              ].map((opt) => (
                 <button
                   key={opt.id}
                   type="button"
-                  onClick={() => setPetMenuVote(opt.id)}
+                  onClick={() => setPetMenuVote(opt.id as any)}
                   style={{
                     padding: '14px 8px',
                     borderRadius: '14px',
@@ -733,7 +747,9 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                     gap: '4px',
                   }}
                 >
-                  <span style={{ fontWeight: 700 }}>{opt.label}</span>
+                  <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {opt.label} {opt.icon}
+                  </span>
                   <span style={{ fontSize: '10px', opacity: 0.7 }}>{opt.sub}</span>
                 </button>
               ))}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FaCheckCircle, FaLeaf, FaTag } from 'react-icons/fa';
 import { theme } from '../../../shared/styles/theme';
 import { supabase } from '../../../shared/api/supabase-client';
 import { getDeviceId } from '../../../shared/utils/device-id';
@@ -411,8 +412,8 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               {[
-                { id: 'allowed', label: '✅ Pets Allowed', sub: 'Welcome indoors' },
-                { id: 'outdoor_only', label: '🌿 Outdoor Only', sub: 'Al fresco only' },
+                { id: 'allowed', label: 'Pets Allowed', sub: 'Welcome indoors', icon: <FaCheckCircle size={13} color={theme.colors.allowed} /> },
+                { id: 'outdoor_only', label: 'Outdoor Only', sub: 'Al fresco only', icon: <FaLeaf size={13} color={theme.colors.outdoorOnly} /> },
               ].map((opt) => {
                 const isSelected = claim === opt.id;
                 return (
@@ -433,7 +434,9 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    <div style={{ fontWeight: 700 }}>{opt.label}</div>
+                    <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      {opt.icon} {opt.label}
+                    </div>
                     <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>{opt.sub}</div>
                   </button>
                 );
@@ -443,8 +446,8 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
 
           {/* Price Range — 3-pill compact */}
           <div style={{ marginBottom: '20px', borderTop: '1px solid #eee', paddingTop: '14px' }}>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '8px' }}>
-              💰 Price Range
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '8px' }}>
+              <FaTag size={12} color="#374151" /> Price Range
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
               {[
