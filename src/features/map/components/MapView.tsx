@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { FaMap, FaCity, FaSatellite } from 'react-icons/fa';
+import { FaMap, FaCity, FaSatellite, FaCube } from 'react-icons/fa';
 import Supercluster from 'supercluster';
 import { theme } from '../../../shared/styles/theme';
 import type { PlaceInBounds, MapBounds } from '../../../shared/types/geo';
@@ -37,6 +37,20 @@ interface SuperclusterPointProps {
 const MANILA_CENTER: [number, number] = [120.9842, 14.5995]; // [lng, lat] for MapLibre GL
 const DEFAULT_ZOOM = 12;
 
+// Native MapLibre GL OSM Standard raster style definition
+const OSM_STANDARD_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: {
+    'osm-raster': {
+      type: 'raster',
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    },
+  },
+  layers: [{ id: 'osm-raster-layer', type: 'raster', source: 'osm-raster' }],
+};
+
 // Native MapLibre GL Satellite style definition
 const SATELLITE_STYLE: maplibregl.StyleSpecification = {
   version: 8,
@@ -63,18 +77,25 @@ const SATELLITE_STYLE: maplibregl.StyleSpecification = {
 
 const TILE_STYLES = [
   {
-    id: 'default',
-    label: 'Default',
-    Icon: FaMap,
+    id: '3d',
+    label: '3D',
+    Icon: FaCube,
     style: 'https://tiles.openfreemap.org/styles/liberty',
     maxZoom: 20,
   },
   {
-    id: 'osm',
-    label: 'Detailed',
-    Icon: FaCity,
+    id: '2d',
+    label: '2D / Flat',
+    Icon: FaMap,
     style: 'https://tiles.openfreemap.org/styles/bright',
     maxZoom: 20,
+  },
+  {
+    id: 'osm-standard',
+    label: 'OSM Standard',
+    Icon: FaCity,
+    style: OSM_STANDARD_STYLE,
+    maxZoom: 19,
   },
   {
     id: 'satellite',
@@ -85,7 +106,7 @@ const TILE_STYLES = [
   },
 ] as const;
 
-type TileStyleId = 'default' | 'osm' | 'satellite';
+type TileStyleId = '3d' | '2d' | 'osm-standard' | 'satellite';
 
 // ---------------------------------------------------------------------------
 // DOM Marker Element Generators
@@ -282,7 +303,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
 
-  const [tileStyle, setTileStyle] = useState<TileStyleId>('default');
+  const [tileStyle, setTileStyle] = useState<TileStyleId>('3d');
   const [currentZoom, setCurrentZoom] = useState(DEFAULT_ZOOM);
   const [spiderfiedState, setSpiderfiedState] = useState<{
     center: [number, number];
@@ -302,6 +323,11 @@ export const MapView: React.FC<MapViewProps> = ({
       zoom: DEFAULT_ZOOM,
       maxZoom: initialItem.maxZoom,
       minZoom: 5,
+      dragRotate: false,
+      touchPitch: false,
+      pitchWithRotate: false,
+      bearing: 0,
+      pitch: 0,
     });
 
     mapRef.current = map;
@@ -344,6 +370,25 @@ export const MapView: React.FC<MapViewProps> = ({
     }
     map.setStyle(selected.style as any);
   }, [tileStyle]);
+
+  // Click map/label in pin drop mode to move the pin directly onto the clicked location
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const handleMapClick = (e: maplibregl.MapMouseEvent) => {
+      if (isPinDropActive && onCenterPinMove) {
+        const { lat, lng } = e.lngLat;
+        map.flyTo({ center: [lng, lat], duration: 400 });
+        onCenterPinMove(lat, lng);
+      }
+    };
+
+    map.on('click', handleMapClick);
+    return () => {
+      map.off('click', handleMapClick);
+    };
+  }, [isPinDropActive, onCenterPinMove]);
 
   // Center override navigation
   useEffect(() => {
