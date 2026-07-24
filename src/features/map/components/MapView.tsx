@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import * as maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { FaMap, FaCity, FaSatellite } from 'react-icons/fa';
 import Supercluster from 'supercluster';
 import { theme } from '../../../shared/styles/theme';
@@ -34,106 +34,130 @@ interface SuperclusterPointProps {
   place?: PlaceInBounds;
 }
 
-const MANILA_CENTER: [number, number] = [14.5995, 120.9842];
+const MANILA_CENTER: [number, number] = [120.9842, 14.5995]; // [lng, lat] for MapLibre GL
 const DEFAULT_ZOOM = 12;
 
-/**
- * Creates custom round paw-shaped markers.
- */
-function createCustomPawIcon(fillColor: string, strokeColor: string = '#ffffff') {
-  return L.divIcon({
-    className: 'custom-paw-pin',
-    html: `
-      <div style="
-        background-color: ${fillColor};
-        border: 2px solid ${strokeColor};
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-      ">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="#ffffff" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="14" r="4.5" />
-          <circle cx="6.5" cy="8.5" r="2.2" />
-          <circle cx="10" cy="5.5" r="2.2" />
-          <circle cx="14" cy="5.5" r="2.2" />
-          <circle cx="17.5" cy="8.5" r="2.2" />
-        </svg>
-      </div>
-    `,
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
-    popupAnchor: [0, -17],
-  });
+// MapLibre GL Satellite style definition
+const SATELLITE_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: {
+    'esri-imagery': {
+      type: 'raster',
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tileSize: 256,
+      attribution: 'Tiles &copy; Esri',
+    },
+    'carto-labels': {
+      type: 'raster',
+      tiles: ['https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png'],
+      tileSize: 256,
+    },
+  },
+  layers: [
+    { id: 'esri-imagery-layer', type: 'raster', source: 'esri-imagery' },
+    { id: 'carto-labels-layer', type: 'raster', source: 'carto-labels' },
+  ],
+};
+
+const TILE_STYLES = [
+  {
+    id: 'default',
+    label: 'Default',
+    Icon: FaMap,
+    style: 'https://tiles.openfreemap.org/styles/liberty',
+  },
+  {
+    id: 'osm',
+    label: 'Detailed',
+    Icon: FaCity,
+    style: 'https://tiles.openfreemap.org/styles/bright',
+  },
+  {
+    id: 'satellite',
+    label: 'Satellite',
+    Icon: FaSatellite,
+    style: SATELLITE_STYLE,
+  },
+] as const;
+
+type TileStyleId = 'default' | 'osm' | 'satellite';
+
+// ---------------------------------------------------------------------------
+// DOM Marker Element Generators
+// ---------------------------------------------------------------------------
+
+function createPawMarkerElement(fillColor: string, strokeColor = '#ffffff'): HTMLElement {
+  const el = document.createElement('div');
+  el.className = 'custom-paw-pin';
+  el.style.width = '34px';
+  el.style.height = '34px';
+  el.style.borderRadius = '50%';
+  el.style.backgroundColor = fillColor;
+  el.style.border = `2px solid ${strokeColor}`;
+  el.style.display = 'flex';
+  el.style.alignItems = 'center';
+  el.style.justifyContent = 'center';
+  el.style.boxShadow = '0 4px 10px rgba(0,0,0,0.15)';
+  el.style.cursor = 'pointer';
+  el.style.transition = 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)';
+
+  el.innerHTML = `
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="#ffffff" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="14" r="4.5" />
+      <circle cx="6.5" cy="8.5" r="2.2" />
+      <circle cx="10" cy="5.5" r="2.2" />
+      <circle cx="14" cy="5.5" r="2.2" />
+      <circle cx="17.5" cy="8.5" r="2.2" />
+    </svg>
+  `;
+  return el;
 }
 
-/**
- * Creates a white-filled, dashed-outlined icon representing unconfirmed/low-confidence reviews.
- */
-function createUnconfirmedPawIcon(borderColor: string = '#9ca3af') {
-  return L.divIcon({
-    className: 'custom-paw-unconfirmed',
-    html: `
-      <div style="
-        background-color: #ffffff;
-        border: 2px dashed ${borderColor};
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      ">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="${borderColor}" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="14" r="4.5" />
-          <circle cx="6.5" cy="8.5" r="2.2" />
-          <circle cx="10" cy="5.5" r="2.2" />
-          <circle cx="14" cy="5.5" r="2.2" />
-          <circle cx="17.5" cy="8.5" r="2.2" />
-        </svg>
-      </div>
-    `,
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
-    popupAnchor: [0, -17],
-  });
+function createUnconfirmedPawMarkerElement(borderColor = '#9ca3af'): HTMLElement {
+  const el = document.createElement('div');
+  el.className = 'custom-paw-unconfirmed';
+  el.style.width = '34px';
+  el.style.height = '34px';
+  el.style.borderRadius = '50%';
+  el.style.backgroundColor = '#ffffff';
+  el.style.border = `2px dashed ${borderColor}`;
+  el.style.display = 'flex';
+  el.style.alignItems = 'center';
+  el.style.justifyContent = 'center';
+  el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.1)';
+  el.style.cursor = 'pointer';
+  el.style.transition = 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)';
+
+  el.innerHTML = `
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="${borderColor}" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="14" r="4.5" />
+      <circle cx="6.5" cy="8.5" r="2.2" />
+      <circle cx="10" cy="5.5" r="2.2" />
+      <circle cx="14" cy="5.5" r="2.2" />
+      <circle cx="17.5" cy="8.5" r="2.2" />
+    </svg>
+  `;
+  return el;
 }
 
-/**
- * Creates a dashed-outline "ghost" marker with a plus sign.
- */
-function createGhostIcon() {
-  return L.divIcon({
-    className: 'custom-ghost-pin',
-    html: `
-      <div style="
-        background-color: rgba(255, 255, 255, 0.9);
-        border: 2px dashed ${theme.colors.terracotta};
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      ">
-        <span style="color: ${theme.colors.terracotta}; font-size: 20px; font-weight: 700; line-height: 1; margin-top: -2px;">+</span>
-      </div>
-    `,
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
-    popupAnchor: [0, -17],
-  });
+function createGhostMarkerElement(): HTMLElement {
+  const el = document.createElement('div');
+  el.className = 'custom-ghost-pin';
+  el.style.width = '34px';
+  el.style.height = '34px';
+  el.style.borderRadius = '50%';
+  el.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+  el.style.border = `2px dashed ${theme.colors.terracotta}`;
+  el.style.display = 'flex';
+  el.style.alignItems = 'center';
+  el.style.justifyContent = 'center';
+  el.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)';
+  el.style.cursor = 'pointer';
+  el.innerHTML = `<span style="color: ${theme.colors.terracotta}; font-size: 20px; font-weight: 700; line-height: 1; margin-top: -2px;">+</span>`;
+  return el;
 }
 
-/**
- * Creates dynamic, cutesy pet-themed cluster icons with size and color progression based on point count.
- */
-function createClusterIcon(count: number) {
+function createClusterMarkerElement(count: number): HTMLElement {
   let size: number;
   let bg: string;
   let border: string;
@@ -141,7 +165,7 @@ function createClusterIcon(count: number) {
 
   if (count >= 10) {
     size = 46;
-    bg = '#C8553D'; // Rich terracotta red
+    bg = '#C8553D';
     border = '#FFF3E0';
     fontSize = '15px';
   } else if (count >= 5) {
@@ -151,330 +175,35 @@ function createClusterIcon(count: number) {
     fontSize = '14px';
   } else {
     size = 34;
-    bg = '#E07A5F'; // Warm pastel terracotta
+    bg = '#E07A5F';
     border = '#ffffff';
     fontSize = '12px';
   }
 
-  return L.divIcon({
-    className: 'custom-cluster',
-    html: `
-      <div style="
-        background-color: ${bg};
-        border: 2.5px solid ${border};
-        color: #ffffff;
-        width: ${size}px;
-        height: ${size}px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        font-size: ${fontSize};
-        box-shadow: 0 4px 14px rgba(200, 85, 61, 0.35);
-        font-family: ${theme.fonts.heading};
-        cursor: pointer;
-      ">
-        ${count}
-      </div>
-    `,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  });
+  const el = document.createElement('div');
+  el.className = 'custom-cluster';
+  el.style.width = `${size}px`;
+  el.style.height = `${size}px`;
+  el.style.borderRadius = '50%';
+  el.style.backgroundColor = bg;
+  el.style.border = `2.5px solid ${border}`;
+  el.style.color = '#ffffff';
+  el.style.display = 'flex';
+  el.style.alignItems = 'center';
+  el.style.justifyContent = 'center';
+  el.style.fontWeight = '800';
+  el.style.fontSize = fontSize;
+  el.style.boxShadow = '0 4px 14px rgba(200, 85, 61, 0.35)';
+  el.style.fontFamily = theme.fonts.heading;
+  el.style.cursor = 'pointer';
+  el.innerText = count.toString();
+  return el;
 }
 
-/**
- * Calculates spiderfied ring coordinates for co-located cluster pins.
- */
-function calculateSpiderfyRing(centerLat: number, centerLng: number, count: number) {
-  const angleStep = (2 * Math.PI) / count;
-  const radius = 0.0003; // ~30 meters ring radius
-  return Array.from({ length: count }, (_, i) => {
-    const angle = i * angleStep;
-    return {
-      lat: centerLat + radius * Math.sin(angle),
-      lng: centerLng + radius * Math.cos(angle),
-    };
-  });
-}
-
-const MapEvents: React.FC<{
-  onBoundsChange: (bounds: MapBounds) => void;
-  onZoomChange: (zoom: number) => void;
-  onClearSpiderfy: () => void;
-  onCenterPinMove?: (lat: number, lng: number) => void;
-  isPinDropActive?: boolean;
-}> = ({ onBoundsChange, onZoomChange, onClearSpiderfy, onCenterPinMove, isPinDropActive }) => {
-
-  const map = useMapEvents({
-    moveend: () => {
-      const b = map.getBounds();
-      onBoundsChange({
-        minLat: b.getSouth(),
-        minLng: b.getWest(),
-        maxLat: b.getNorth(),
-        maxLng: b.getEast(),
-      });
-      // Fire reverse geocode only once per completed pan — avoids rate-limiting
-      if (isPinDropActive && onCenterPinMove) {
-        const center = map.getCenter();
-        onCenterPinMove(center.lat, center.lng);
-      }
-    },
-    zoomend: () => {
-      onZoomChange(map.getZoom());
-      onClearSpiderfy();
-      // Also geocode on zoom settle
-      if (isPinDropActive && onCenterPinMove) {
-        const center = map.getCenter();
-        onCenterPinMove(center.lat, center.lng);
-      }
-    },
-  });
-
-  useEffect(() => {
-    const b = map.getBounds();
-    onBoundsChange({
-      minLat: b.getSouth(),
-      minLng: b.getWest(),
-      maxLat: b.getNorth(),
-      maxLng: b.getEast(),
-    });
-    onZoomChange(map.getZoom());
-  }, [map]);
-
-  return null;
-};
-
-const MapController: React.FC<{ center: [number, number] | null }> = ({ center }) => {
-  const map = useMap();
-  useEffect(() => {
-    if (center) {
-      map.flyTo(center, 15, { duration: 0.8, easeLinearity: 0.25 });
-    }
-  }, [center, map]);
-  return null;
-};
-
-
-
-
 // ---------------------------------------------------------------------------
-// Tile style definitions
+// Fixed Center-Screen Pin Overlay for Location Picker
 // ---------------------------------------------------------------------------
 
-const TILE_STYLES: Array<{
-  id: string;
-  label: string;
-  Icon: React.ComponentType<{ size?: number }>;
-  attribution: string;
-  url: string;
-  overlay?: string | null;
-}> = [
-  {
-    id: 'default',
-    label: 'Default',
-    Icon: FaMap,
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    overlay: null,
-  },
-  {
-    id: 'osm',
-    label: 'Detailed',
-    Icon: FaCity,
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    overlay: null,
-  },
-  {
-    id: 'satellite',
-    label: 'Satellite',
-    Icon: FaSatellite,
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DigitalGlobe, GeoEye, CNES/Airbus DS, USGS, AeroGRID, IGN',
-    overlay: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
-  },
-];
-
-type TileStyleId = 'default' | 'osm' | 'satellite';
-
-
-// ---------------------------------------------------------------------------
-// Tile style picker button group (renders inside MapContainer)
-// ---------------------------------------------------------------------------
-
-const TileStylePicker: React.FC<{ current: TileStyleId; onChange: (id: TileStyleId) => void }> = ({ current, onChange }) => {
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        top: '176px',
-        right: '16px',
-        zIndex: 1000,
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: '#ffffff',
-        borderRadius: '12px',
-        boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
-        overflow: 'hidden',
-        border: `1px solid ${theme.colors.borderLight}`,
-      }}
-    >
-      {TILE_STYLES.map((style, i) => {
-        const { Icon } = style;
-        return (
-          <button
-            key={style.id}
-            type="button"
-            title={style.label}
-            onClick={() => onChange(style.id as TileStyleId)}
-            style={{
-              width: '36px',
-              height: '36px',
-              backgroundColor: current === style.id ? theme.colors.softPink : '#ffffff',
-              border: 'none',
-              borderBottom: i < TILE_STYLES.length - 1 ? `1px solid ${theme.colors.borderLight}` : 'none',
-              color: current === style.id ? theme.colors.terracotta : theme.colors.textMuted,
-              fontSize: '15px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'background-color 0.15s ease',
-            }}
-          >
-            <Icon size={15} />
-          </button>
-        );
-      })}
-    </div>
-  );
-};
-
-const ZoomControls: React.FC = () => {
-  const map = useMap();
-
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        top: '80px',
-        right: '16px',
-        zIndex: 1000,
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: '#ffffff',
-        borderRadius: '12px',
-        boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
-        overflow: 'hidden',
-        border: `1px solid ${theme.colors.borderLight}`,
-      }}
-    >
-      <button
-        type="button"
-        onClick={() => map.zoomIn()}
-        aria-label="Zoom in"
-        style={{
-          width: '36px',
-          height: '36px',
-          backgroundColor: '#ffffff',
-          border: 'none',
-          borderBottom: `1px solid ${theme.colors.borderLight}`,
-          color: theme.colors.textDark,
-          fontSize: '18px',
-          fontWeight: 700,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'all 0.15s ease',
-        }}
-        onMouseOver={(e) => {
-          e.currentTarget.style.backgroundColor = theme.colors.softPink;
-          e.currentTarget.style.color = theme.colors.terracotta;
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.backgroundColor = '#ffffff';
-          e.currentTarget.style.color = theme.colors.textDark;
-        }}
-      >
-        +
-      </button>
-      <button
-        type="button"
-        onClick={() => map.zoomOut()}
-        aria-label="Zoom out"
-        style={{
-          width: '36px',
-          height: '36px',
-          backgroundColor: '#ffffff',
-          border: 'none',
-          color: theme.colors.textDark,
-          fontSize: '18px',
-          fontWeight: 700,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'all 0.15s ease',
-        }}
-        onMouseOver={(e) => {
-          e.currentTarget.style.backgroundColor = theme.colors.softPink;
-          e.currentTarget.style.color = theme.colors.terracotta;
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.backgroundColor = '#ffffff';
-          e.currentTarget.style.color = theme.colors.textDark;
-        }}
-      >
-        −
-      </button>
-    </div>
-  );
-};
-
-const ClusterMarker: React.FC<{
-  clusterId: number;
-  lat: number;
-  lng: number;
-  count: number;
-  supercluster: Supercluster<SuperclusterPointProps, any>;
-  onSpiderfy: (centerLat: number, centerLng: number, places: PlaceInBounds[]) => void;
-}> = ({ clusterId, lat, lng, count, supercluster, onSpiderfy }) => {
-  const map = useMap();
-
-  const handleClick = () => {
-    const currentZoom = map.getZoom();
-    const expansionZoom = Math.min(
-      supercluster.getClusterExpansionZoom(clusterId),
-      18
-    );
-
-    if (expansionZoom > currentZoom && currentZoom < 18) {
-      map.flyTo([lat, lng], expansionZoom, { duration: 0.8, easeLinearity: 0.25 });
-    } else {
-      // At max zoom or identical coordinates: Spiderfy leaf markers!
-      const leaves = supercluster.getLeaves(clusterId, 50);
-      const placeList = leaves.map((l) => l.properties?.place).filter(Boolean) as PlaceInBounds[];
-      if (placeList.length > 0) {
-        onSpiderfy(lat, lng, placeList);
-      }
-    }
-  };
-
-  return (
-    <Marker
-      position={[lat, lng]}
-      icon={createClusterIcon(count)}
-      eventHandlers={{ click: handleClick }}
-    />
-  );
-};
-
-/**
- * Fixed Center-Screen Pin Overlay for Grab/Angkas/FoodPanda-style location picking.
- */
 const CenterPinOverlay: React.FC = () => {
   return (
     <div
@@ -530,9 +259,10 @@ const CenterPinOverlay: React.FC = () => {
   );
 };
 
-/**
- * Main styled Leaflet Map view drawing places, dynamic Supercluster spatial centroids, and spiderfy ring fanout.
- */
+// ---------------------------------------------------------------------------
+// MapView Component (Native MapLibre GL JS)
+// ---------------------------------------------------------------------------
+
 export const MapView: React.FC<MapViewProps> = ({
   places,
   onBoundsChange,
@@ -540,25 +270,85 @@ export const MapView: React.FC<MapViewProps> = ({
   centerOverride,
   ghostPlace,
   onSelectGhostPlace,
-  hideExplainer,
   isPinDropActive,
   onCenterPinMove,
 }) => {
-  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
-  const [initialCenter] = useState<[number, number]>(MANILA_CENTER);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+
+  const [tileStyle, setTileStyle] = useState<TileStyleId>('default');
+  const [currentZoom, setCurrentZoom] = useState(DEFAULT_ZOOM);
   const [spiderfiedState, setSpiderfiedState] = useState<{
     center: [number, number];
     items: Array<{ place: PlaceInBounds; pos: { lat: number; lng: number } }>;
   } | null>(null);
-  const [tileStyle, setTileStyle] = useState<TileStyleId>('default');
 
-  const activeTile = TILE_STYLES.find((s) => s.id === tileStyle) ?? TILE_STYLES[0];
+  // Initialize MapLibre GL map instance
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
 
-  // Initialize Supercluster instance using screen-pixel distance clustering
+    const initialStyleObj = TILE_STYLES.find((s) => s.id === tileStyle)?.style || TILE_STYLES[0].style;
+
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: initialStyleObj as any,
+      center: MANILA_CENTER,
+      zoom: DEFAULT_ZOOM,
+      maxZoom: 20,
+      minZoom: 5,
+    });
+
+    mapRef.current = map;
+
+    const handleMoveEnd = () => {
+      const b = map.getBounds();
+      onBoundsChange({
+        minLat: b.getSouth(),
+        minLng: b.getWest(),
+        maxLat: b.getNorth(),
+        maxLng: b.getEast(),
+      });
+      setCurrentZoom(map.getZoom());
+
+      if (isPinDropActive && onCenterPinMove) {
+        const c = map.getCenter();
+        onCenterPinMove(c.lat, c.lng);
+      }
+    };
+
+    map.on('load', handleMoveEnd);
+    map.on('moveend', handleMoveEnd);
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Update map style when tileStyle changes
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const styleObj = TILE_STYLES.find((s) => s.id === tileStyle)?.style || TILE_STYLES[0].style;
+    mapRef.current.setStyle(styleObj as any);
+  }, [tileStyle]);
+
+  // Center override navigation
+  useEffect(() => {
+    if (centerOverride && mapRef.current) {
+      mapRef.current.flyTo({
+        center: [centerOverride[1], centerOverride[0]],
+        zoom: 15,
+        duration: 800,
+      });
+    }
+  }, [centerOverride]);
+
+  // Supercluster instance calculation
   const supercluster = useMemo(() => {
     const sc = new Supercluster<SuperclusterPointProps>({
-      radius: 50, // Standard screen-pixel cluster radius
-      maxZoom: 16, // Cluster up to zoom level 16, separating when zooming in
+      radius: 50,
+      maxZoom: 16,
     });
 
     const points = places.map((place) => ({
@@ -578,38 +368,120 @@ export const MapView: React.FC<MapViewProps> = ({
     return sc;
   }, [places]);
 
-  const clusters = useMemo(() => {
-    if (!places || places.length === 0) return [];
-    return supercluster.getClusters([-180, -85, 180, 85], Math.floor(zoom));
-  }, [supercluster, places, zoom]);
+  // Render MapLibre DOM Markers
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
 
-  const handleSpiderfyCluster = (centerLat: number, centerLng: number, leafPlaces: PlaceInBounds[]) => {
-    const ringPositions = calculateSpiderfyRing(centerLat, centerLng, leafPlaces.length);
-    const spiderfiedItems = leafPlaces.map((p, idx) => ({
-      place: p,
-      pos: ringPositions[idx],
-    }));
-    setSpiderfiedState({
-      center: [centerLat, centerLng],
-      items: spiderfiedItems,
-    });
-  };
+    // Clear previous markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
 
-  const getMarkerIcon = (place: PlaceInBounds) => {
-    const style = getConfidenceStyle('policy', place.claim, place.agreeing_devices, place.runner_up_agreeing_devices);
-    
-    if (style.isSolid) {
-      return createCustomPawIcon(style.backgroundColor);
+    // 1. Ghost marker
+    if (ghostPlace) {
+      const ghostEl = createGhostMarkerElement();
+      const ghostMarker = new maplibregl.Marker({ element: ghostEl })
+        .setLngLat([ghostPlace.longitude, ghostPlace.latitude])
+        .addTo(map);
+      ghostEl.addEventListener('click', () => onSelectGhostPlace(ghostPlace));
+      markersRef.current.push(ghostMarker);
     }
-    
-    return createUnconfirmedPawIcon(style.textColor);
-  };
+
+    // 2. Spiderfied markers
+    if (spiderfiedState) {
+      spiderfiedState.items.forEach(({ place, pos }) => {
+        const style = getConfidenceStyle('policy', place.claim, place.agreeing_devices, place.runner_up_agreeing_devices);
+        const el = style.isSolid
+          ? createPawMarkerElement(style.backgroundColor)
+          : createUnconfirmedPawMarkerElement(style.textColor);
+
+        const m = new maplibregl.Marker({ element: el })
+          .setLngLat([pos.lng, pos.lat])
+          .addTo(map);
+
+        el.addEventListener('click', () => {
+          setSpiderfiedState(null);
+          onSelectPlace(place);
+        });
+        markersRef.current.push(m);
+      });
+      return;
+    }
+
+    // 3. Supercluster clusters & points
+    const bounds = map.getBounds();
+    const clusters = supercluster.getClusters(
+      [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()],
+      Math.floor(currentZoom)
+    );
+
+    clusters.forEach((feature) => {
+      const [fLng, fLat] = feature.geometry.coordinates;
+      const isCluster = feature.properties?.cluster;
+
+      if (isCluster) {
+        const count = (feature.properties as any).point_count;
+        const clusterId = feature.id as number;
+        const el = createClusterMarkerElement(count);
+
+        const m = new maplibregl.Marker({ element: el })
+          .setLngLat([fLng, fLat])
+          .addTo(map);
+
+        el.addEventListener('click', () => {
+          const expansionZoom = Math.min(
+            supercluster.getClusterExpansionZoom(clusterId),
+            18
+          );
+          if (expansionZoom > currentZoom && currentZoom < 18) {
+            map.flyTo({ center: [fLng, fLat], zoom: expansionZoom, duration: 800 });
+          } else {
+            const leaves = supercluster.getLeaves(clusterId, 50);
+            const placeList = leaves.map((l) => l.properties?.place).filter(Boolean) as PlaceInBounds[];
+            if (placeList.length > 0) {
+              const angleStep = (2 * Math.PI) / placeList.length;
+              const radius = 0.0003;
+              const ringItems = placeList.map((p, idx) => ({
+                place: p,
+                pos: {
+                  lat: fLat + radius * Math.sin(idx * angleStep),
+                  lng: fLng + radius * Math.cos(idx * angleStep),
+                },
+              }));
+              setSpiderfiedState({ center: [fLat, fLng], items: ringItems });
+            }
+          }
+        });
+
+        markersRef.current.push(m);
+      } else {
+        const place = feature.properties?.place;
+        if (!place) return;
+
+        const style = getConfidenceStyle('policy', place.claim, place.agreeing_devices, place.runner_up_agreeing_devices);
+        const el = style.isSolid
+          ? createPawMarkerElement(style.backgroundColor)
+          : createUnconfirmedPawMarkerElement(style.textColor);
+
+        const m = new maplibregl.Marker({ element: el })
+          .setLngLat([place.longitude, place.latitude])
+          .addTo(map);
+
+        el.addEventListener('click', () => {
+          setSpiderfiedState(null);
+          onSelectPlace(place);
+        });
+
+        markersRef.current.push(m);
+      }
+    });
+  }, [supercluster, currentZoom, spiderfiedState, ghostPlace, places]);
 
   return (
-    <div 
-      style={{ 
-        width: '100%', 
-        height: '100%', 
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
         position: 'relative',
         borderRadius: '24px',
         overflow: 'hidden',
@@ -617,213 +489,123 @@ export const MapView: React.FC<MapViewProps> = ({
       }}
     >
       <style>{`
-        .map-container .leaflet-tile-pane {
-          filter: saturate(90%) brightness(1.01);
+        .custom-paw-pin:hover, .custom-cluster:hover, .custom-paw-unconfirmed:hover, .custom-ghost-pin:hover {
+          transform: scale(1.18) !important;
         }
-
-        .custom-paw-pin > div, .custom-cluster > div, .custom-paw-unconfirmed > div, .custom-ghost-pin > div {
-          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease-out;
-          animation: markerPopIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
-
-        .custom-paw-pin:hover > div, .custom-cluster:hover > div, .custom-paw-unconfirmed:hover > div, .custom-ghost-pin:hover > div {
-          transform: scale(1.18);
-        }
-
-        @keyframes markerPopIn {
-          0% {
-            transform: scale(0.3);
-            opacity: 0;
-          }
-          70% {
-            transform: scale(1.12);
-            opacity: 1;
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
+        .maplibregl-ctrl-attrib {
+          font-size: 10px !important;
+          background-color: rgba(255, 255, 255, 0.8) !important;
         }
       `}</style>
-      <MapContainer
-        center={initialCenter}
-        zoom={DEFAULT_ZOOM}
-        maxZoom={20}
-        minZoom={5}
-        zoomControl={false}
-        className="map-container"
-        style={{ width: '100%', height: '100%', zIndex: 1 }}
+
+      {/* MapLibre GL Container */}
+      <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1 }} />
+
+      {/* Zoom Controls */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '80px',
+          right: '16px',
+          zIndex: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: '#ffffff',
+          borderRadius: '12px',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
+          overflow: 'hidden',
+          border: `1px solid ${theme.colors.borderLight}`,
+        }}
       >
-        <TileLayer
-          key={activeTile.id}
-          attribution={activeTile.attribution}
-          url={activeTile.url}
-          maxZoom={20}
-          maxNativeZoom={19}
-        />
-        {activeTile.overlay && (
-          <TileLayer
-            key={`${activeTile.id}-overlay`}
-            url={activeTile.overlay}
-            attribution=""
-            pane="overlayPane"
-            maxZoom={20}
-            maxNativeZoom={19}
-          />
-        )}
-
-        <MapEvents
-          onBoundsChange={onBoundsChange}
-          onZoomChange={setZoom}
-          onClearSpiderfy={() => setSpiderfiedState(null)}
-          onCenterPinMove={onCenterPinMove}
-          isPinDropActive={isPinDropActive}
-        />
-        <MapController center={centerOverride} />
-        <ZoomControls />
-        <TileStylePicker current={tileStyle} onChange={setTileStyle} />
-
-        {/* Render Supercluster points and centroids */}
-        {clusters.map((feature, idx) => {
-          const isCluster = feature.properties?.cluster;
-
-          if (isCluster) {
-            const [clusterLng, clusterLat] = feature.geometry.coordinates;
-            const pointCount = (feature.properties as any).point_count;
-            const clusterId = feature.id as number;
-
-            return (
-              <ClusterMarker
-                key={`cluster-${clusterId || idx}`}
-                clusterId={clusterId}
-                lat={clusterLat}
-                lng={clusterLng}
-                count={pointCount}
-                supercluster={supercluster}
-                onSpiderfy={handleSpiderfyCluster}
-              />
-            );
-          }
-
-          const place = feature.properties?.place;
-          if (!place) return null;
-
-          return (
-            <Marker
-              key={place.id}
-              position={[place.latitude, place.longitude]}
-              icon={getMarkerIcon(place)}
-              eventHandlers={{
-                click: () => {
-                  setSpiderfiedState(null);
-                  onSelectPlace(place);
-                },
-              }}
-            />
-          );
-        })}
-
-        {/* Render Spiderfied fanout ring when co-located cluster is clicked */}
-        {spiderfiedState && (
-          <>
-            {spiderfiedState.items.map((item) => (
-              <React.Fragment key={`spider-group-${item.place.id}`}>
-                <Polyline
-                  positions={[spiderfiedState.center, [item.pos.lat, item.pos.lng]]}
-                  pathOptions={{
-                    color: theme.colors.terracotta,
-                    weight: 2,
-                    dashArray: '4, 4',
-                    opacity: 0.8,
-                  }}
-                />
-                <Marker
-                  position={[item.pos.lat, item.pos.lng]}
-                  icon={getMarkerIcon(item.place)}
-                  eventHandlers={{
-                    click: () => {
-                      onSelectPlace(item.place);
-                    },
-                  }}
-                />
-              </React.Fragment>
-            ))}
-          </>
-        )}
-
-        {/* Render ghost place selection from geocoder if present (Draggable pin like Grab / Foodpanda) */}
-        {ghostPlace && (
-          <Marker
-            position={[ghostPlace.latitude, ghostPlace.longitude]}
-            draggable={true}
-            icon={createGhostIcon()}
-            eventHandlers={{
-              click: () => onSelectGhostPlace(ghostPlace),
-              dragend: (e: any) => {
-                const marker = e.target;
-                if (marker) {
-                  const latLng = marker.getLatLng();
-                  onSelectGhostPlace({
-                    ...ghostPlace,
-                    latitude: latLng.lat,
-                    longitude: latLng.lng,
-                  });
-                }
-              },
-            }}
-          />
-        )}
-      </MapContainer>
-
-      {/* Viewport empty status indicator card */}
-      {places.length === 0 && !ghostPlace && !hideExplainer && (
-        <div
+        <button
+          type="button"
+          onClick={() => mapRef.current?.zoomIn()}
+          aria-label="Zoom in"
           style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: 'rgba(255, 255, 255, 0.98)',
-            borderRadius: '24px',
-            padding: '24px 28px',
-            boxShadow: '0 12px 30px rgba(0,0,0,0.12)',
-            textAlign: 'center',
-            maxWidth: '320px',
-            width: '90%',
-            zIndex: 1000,
-            pointerEvents: 'none',
-            border: `2px dashed ${theme.colors.terracotta}`,
-            boxSizing: 'border-box',
+            width: '36px',
+            height: '36px',
+            backgroundColor: '#ffffff',
+            border: 'none',
+            borderBottom: `1px solid ${theme.colors.borderLight}`,
+            color: theme.colors.textDark,
+            fontSize: '18px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          <div style={{ fontSize: '28px', marginBottom: '8px', lineHeight: 1 }}>🐾🐾</div>
-          <h3
-            style={{
-              fontSize: '20px',
-              fontWeight: 800,
-              color: theme.colors.terracotta,
-              margin: '0 0 8px 0',
-              fontFamily: theme.fonts.heading,
-              letterSpacing: '-0.3px',
-            }}
-          >
-            No furbaby spots here!
-          </h3>
-          <p
-            style={{
-              fontSize: '13px',
-              color: '#6b7c96',
-              margin: 0,
-              lineHeight: 1.5,
-              fontWeight: 500,
-            }}
-          >
-            No pet-friendly places reported in this area yet -- be the first! 🐾
-          </p>
-        </div>
-      )}
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => mapRef.current?.zoomOut()}
+          aria-label="Zoom out"
+          style={{
+            width: '36px',
+            height: '36px',
+            backgroundColor: '#ffffff',
+            border: 'none',
+            color: theme.colors.textDark,
+            fontSize: '18px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          −
+        </button>
+      </div>
 
-      {/* Grab / Angkas / FoodPanda style Center Pin Overlay */}
+      {/* Tile Style Picker */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '176px',
+          right: '16px',
+          zIndex: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: '#ffffff',
+          borderRadius: '12px',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
+          overflow: 'hidden',
+          border: `1px solid ${theme.colors.borderLight}`,
+        }}
+      >
+        {TILE_STYLES.map((style, i) => {
+          const { Icon } = style;
+          return (
+            <button
+              key={style.id}
+              type="button"
+              title={style.label}
+              onClick={() => setTileStyle(style.id as TileStyleId)}
+              style={{
+                width: '36px',
+                height: '36px',
+                backgroundColor: tileStyle === style.id ? theme.colors.softPink : '#ffffff',
+                border: 'none',
+                borderBottom: i < TILE_STYLES.length - 1 ? `1px solid ${theme.colors.borderLight}` : 'none',
+                color: tileStyle === style.id ? theme.colors.terracotta : theme.colors.textMuted,
+                fontSize: '15px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background-color 0.15s ease',
+              }}
+            >
+              <Icon size={15} />
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Center Pin Drop Overlay */}
       {isPinDropActive && <CenterPinOverlay />}
     </div>
   );
