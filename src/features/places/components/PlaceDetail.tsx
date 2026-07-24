@@ -279,11 +279,11 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                 : (dbPlace.claim ? claimLabels[dbPlace.claim] : 'No policy reports');
 
               const policyMicrocopy = policyDisputed && dbPlace.claim
-                ? `⚠️ Contradictory reports (${dbPlace.agreeing_devices} vs ${dbPlace.runner_up_agreeing_devices})`
+                ? `⚠️ Contradictory (${dbPlace.agreeing_devices} vs ${dbPlace.runner_up_agreeing_devices})`
                 : dbPlace.claim
                   ? policyConfirmed
-                    ? `Confirmed by ${dbPlace.agreeing_devices} contributors`
-                    : `Reported by ${dbPlace.agreeing_devices} contributor${dbPlace.agreeing_devices === 1 ? '' : 's'} -- not yet confirmed`
+                    ? `👥 Verified by ${dbPlace.agreeing_devices}`
+                    : `👥 Reported by ${dbPlace.agreeing_devices}`
                   : 'No reports yet';
 
               const latestReportDate = reports && reports.length > 0
@@ -291,7 +291,7 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                 : null;
               const formattedLatestDate = latestReportDate
                 ? latestReportDate.toLocaleDateString('en-US', {
-                    month: 'long',
+                    month: 'short',
                     day: 'numeric',
                     year: 'numeric',
                   })
@@ -362,14 +362,14 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                     >
                       {policyLabel}
                     </span>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', gap: '8px' }}>
                       <span
                         style={{
                           fontSize: '11px',
-                          fontWeight: 500,
+                          fontWeight: 600,
                           color: policyDisputed
                             ? '#d97706'
-                            : (policyStyle.isSolid ? 'rgba(255,255,255,0.9)' : theme.colors.textMuted),
+                            : (policyStyle.isSolid ? 'rgba(255,255,255,0.95)' : theme.colors.textMuted),
                         }}
                       >
                         {policyMicrocopy}
@@ -377,14 +377,14 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
                       {formattedLatestDate && (
                         <span
                           style={{
-                            fontSize: '10px',
+                            fontSize: '11px',
                             fontWeight: 500,
                             color: policyDisputed
                               ? '#92400e'
-                              : (policyStyle.isSolid ? 'rgba(255,255,255,0.85)' : theme.colors.textMuted),
+                              : (policyStyle.isSolid ? 'rgba(255,255,255,0.9)' : theme.colors.textMuted),
                           }}
                         >
-                          Last update: {formattedLatestDate}
+                          🗓 {formattedLatestDate}
                         </span>
                       )}
                     </div>
