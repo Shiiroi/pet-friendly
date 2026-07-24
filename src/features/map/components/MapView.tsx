@@ -338,8 +338,8 @@ export const MapView: React.FC<MapViewProps> = ({
   // Initialize Supercluster instance using screen-pixel distance clustering
   const supercluster = useMemo(() => {
     const sc = new Supercluster<SuperclusterPointProps>({
-      radius: 45, // Cluster radius in screen pixels
-      maxZoom: 16, // Maximum zoom level to cluster points
+      radius: 25, // Small radius in screen pixels so only touching markers cluster
+      maxZoom: 12, // Stop clustering at zoom 12+ so city view shows individual pins!
     });
 
     const points = places.map((place) => ({
@@ -441,10 +441,10 @@ export const MapView: React.FC<MapViewProps> = ({
 
         {/* Render Supercluster points and centroids */}
         {clusters.map((feature, idx) => {
-          const [lng, lat] = feature.geometry.coordinates;
           const isCluster = feature.properties?.cluster;
 
           if (isCluster) {
+            const [clusterLng, clusterLat] = feature.geometry.coordinates;
             const pointCount = (feature.properties as any).point_count;
             const clusterId = feature.id as number;
 
@@ -452,8 +452,8 @@ export const MapView: React.FC<MapViewProps> = ({
               <ClusterMarker
                 key={`cluster-${clusterId || idx}`}
                 clusterId={clusterId}
-                lat={lat}
-                lng={lng}
+                lat={clusterLat}
+                lng={clusterLng}
                 count={pointCount}
                 supercluster={supercluster}
                 onSelectPlace={onSelectPlace}
@@ -467,7 +467,7 @@ export const MapView: React.FC<MapViewProps> = ({
           return (
             <Marker
               key={place.id}
-              position={[lat, lng]}
+              position={[place.latitude, place.longitude]}
               icon={getMarkerIcon(place)}
               eventHandlers={{
                 click: () => onSelectPlace(place),
