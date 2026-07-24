@@ -6,6 +6,7 @@ import { uuidv4 } from '../../../shared/utils/uuid';
 import { addPendingReport } from '../../../shared/outbox/outbox-db';
 import { PlaceSearchBar } from './PlaceSearchBar';
 import { getPlaceDetails } from '../api/search-google-places';
+import { ProvinceCombobox } from './ProvinceCombobox';
 import { StoreHoursFormInput } from './StoreHoursFormInput';
 import type { WeeklyOperatingHours } from '../types/hours';
 import { getDefaultOperatingHours } from '../../../shared/utils/operating-hours';
@@ -374,17 +375,12 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             />
           </div>
 
-          {/* Row 3: City/Municipality and Province (Auto-filled & Read-only) */}
+          {/* Row 3: City/Municipality (Read-only) and Province (Editable Combobox) */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '12px' }}>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <label style={{ fontWeight: 600, fontSize: '12px', color: '#6b7280' }}>
-                  City / Municipality
-                </label>
-                <span style={{ fontSize: '10px', color: theme.colors.terracotta, fontWeight: 600 }}>
-                  ✓ Auto-filled
-                </span>
-              </div>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                City / Municipality
+              </label>
               <input
                 type="text"
                 value={city || 'General'}
@@ -405,30 +401,12 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             </div>
 
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <label style={{ fontWeight: 600, fontSize: '12px', color: '#6b7280' }}>
-                  Province / Region
-                </label>
-                <span style={{ fontSize: '10px', color: theme.colors.terracotta, fontWeight: 600 }}>
-                  ✓ Auto-filled
-                </span>
-              </div>
-              <input
-                type="text"
-                value={province || 'Metro Manila'}
-                disabled
-                readOnly
-                style={{
-                  width: '100%',
-                  height: '40px',
-                  padding: '0 10px',
-                  borderRadius: '8px',
-                  border: '1px solid #ddd',
-                  backgroundColor: '#f3f4f6',
-                  color: theme.colors.textDark,
-                  fontSize: '14px',
-                  boxSizing: 'border-box',
-                }}
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                Province / Region
+              </label>
+              <ProvinceCombobox
+                value={province}
+                onChange={setProvince}
               />
             </div>
           </div>
