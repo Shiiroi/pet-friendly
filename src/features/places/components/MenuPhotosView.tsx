@@ -172,8 +172,13 @@ export const MenuPhotosView: React.FC<MenuPhotosViewProps> = ({
                 borderRadius: '10px',
                 overflow: 'hidden',
                 cursor: 'pointer',
-                border: `1px solid ${theme.colors.borderLight}`,
+                border: photo.category === 'pet_menu'
+                  ? `2px solid ${theme.colors.terracotta}`
+                  : `1px solid ${theme.colors.borderLight}`,
                 backgroundColor: '#f3f4f6',
+                boxShadow: photo.category === 'pet_menu'
+                  ? '0 0 0 1px rgba(224,122,95,0.2)'
+                  : 'none',
               }}
             >
               <img

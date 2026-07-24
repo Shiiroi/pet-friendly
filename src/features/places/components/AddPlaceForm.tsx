@@ -7,13 +7,12 @@ import { addPendingReport } from '../../../shared/outbox/outbox-db';
 import { PlaceSearchBar } from './PlaceSearchBar';
 import { getPlaceDetails } from '../api/search-google-places';
 import { ProvinceCombobox } from './ProvinceCombobox';
-import { StoreHoursFormInput } from './StoreHoursFormInput';
 import type { WeeklyOperatingHours } from '../types/hours';
-import { getDefaultOperatingHours } from '../../../shared/utils/operating-hours';
 
 interface AddPlaceFormProps {
   onClose: () => void;
-  onSuccess: () => void;
+  /** Called with the new place ID + name after successful creation */
+  onSuccess: (newPlaceId: string, placeName: string, autoHours?: WeeklyOperatingHours | null) => void;
   onTriggerNicknamePrompt: () => void;
   initialPlace?: { name: string; address: string; latitude: number; longitude: number } | null;
 }
@@ -27,15 +26,11 @@ interface SelectedSearch {
 }
 
 /**
- * Form to register a new pet-friendly place and submit its initial policy report.
- */
-/**
  * Helper to parse and extract the city candidate from a Google formatted address string.
  */
 function extractCityFromAddress(address: string): string {
   if (!address) return '';
   const parts = address.split(',').map((p) => p.trim());
-  // Standard format in PH address strings: [..., City, Province/Metro Manila, Country]
   if (parts.length >= 3) {
     return parts[parts.length - 3];
   }
@@ -45,6 +40,11 @@ function extractCityFromAddress(address: string): string {
   return '';
 }
 
+/**
+ * Streamlined form to register a new pet-friendly place.
+ * Only collects essential fields on creation — detailed inputs are
+ * disclosed progressively via the post-submission PlaceAddedModal.
+ */
 export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
   onClose,
   onSuccess,
@@ -73,24 +73,21 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
 
   const [province, setProvince] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['Café']);
-  const [claim, setClaim] = useState<'allowed' | 'not_allowed' | 'outdoor_only'>('allowed');
-  const [petMenu, setPetMenu] = useState<'yes' | 'no' | 'unsure'>('unsure');
+  const [claim, setClaim] = useState<'allowed' | 'outdoor_only'>('allowed');
   const [priceRange, setPriceRange] = useState<'budget' | 'mid' | 'splurge'>('mid');
-  const [reqDiaper, setReqDiaper] = useState(true);
-  const [reqCaged, setReqCaged] = useState(false);
-  const [reqStroller, setReqStroller] = useState(false);
-  const [operatingHours, setOperatingHours] = useState<WeeklyOperatingHours | null>(null);
-  const [includeStoreHours, setIncludeStoreHours] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Auto-captured from Google — used post-submission
+  const [autoHours, setAutoHours] = useState<WeeklyOperatingHours | null>(null);
 
   const categories = ['Café', 'Restaurant', 'Park', 'Mall', 'Hotel', 'Shop', 'Other'];
 
   const toggleCategory = (cat: string) => {
     setSelectedCategories((prev) => {
       if (prev.includes(cat)) {
-        if (prev.length === 1) return prev; // keep at least 1 tag selected
+        if (prev.length === 1) return prev;
         return prev.filter((c) => c !== cat);
       }
       return [...prev, cat];
@@ -110,17 +107,11 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
     const resolvedCity = autoCity || extractCityFromAddress(address);
     setCity(resolvedCity);
     if (autoProvince) setProvince(autoProvince);
-    if (hours) {
-      setOperatingHours(hours);
-      setIncludeStoreHours(true);
-    } else {
-      setIncludeStoreHours(false);
-    }
+    if (hours) setAutoHours(hours);
     setErrorMsg(null);
   };
 
   const handleSelectLocal = () => {
-    // Local place is already in the database, prevent duplicates
     setErrorMsg('This spot is already tracked in our directory! Please use the place details card to confirm or suggest updates.');
   };
 
@@ -140,6 +131,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
 
     let resolvedLat = 0;
     let resolvedLng = 0;
+    let resolvedHours = autoHours;
 
     try {
       if (selectedPlace.lat !== undefined && selectedPlace.lng !== undefined) {
@@ -150,31 +142,14 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
         if (details) {
           resolvedLat = details.lat;
           resolvedLng = details.lng;
-          if (details.openingHours && !operatingHours) {
-            setOperatingHours(details.openingHours);
-            setIncludeStoreHours(true);
-          }
-          if (details.city && !city) {
-            setCity(details.city);
-          }
-          if (details.province && !province) {
-            setProvince(details.province);
-          }
+          if (details.openingHours) resolvedHours = details.openingHours;
+          if (details.city && !city) setCity(details.city);
+          if (details.province && !province) setProvince(details.province);
         } else {
           throw new Error('Coordinates could not be resolved from search results.');
         }
       }
 
-      const reqs: string[] = [];
-      if (reqDiaper) reqs.push('diaper');
-      if (reqCaged) reqs.push('caged');
-      if (reqStroller) reqs.push('stroller');
-
-      const formattedRequirements = reqs.join(', ');
-
-      const dbPetMenu = petMenu === 'unsure' ? 'not_sure' : petMenu;
-
-      // 4. Submit transactional RPC inserting place and initial report together
       const { data: newPlaceId, error } = await supabase.rpc('create_place_with_report', {
         p_name: selectedPlace.name,
         p_address: selectedPlace.address,
@@ -185,30 +160,21 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
         p_longitude: resolvedLng,
         p_device_id: getDeviceId(),
         p_claim: claim,
-        p_pet_menu: dbPetMenu,
+        p_pet_menu: 'not_sure',
         p_price_range: priceRange,
-        p_notes: formattedRequirements,
-        p_operating_hours: includeStoreHours ? (operatingHours as any) : null,
+        p_notes: '',
+        p_operating_hours: null,
       });
 
       if (error) throw error;
       if (!newPlaceId) throw new Error('Transaction returned empty response.');
 
-
-      // 5. Trigger nickname prompt overlay if needed
       triggerNicknamePromptFlow();
-      onSuccess();
+      onSuccess(newPlaceId, selectedPlace.name, resolvedHours);
       onClose();
     } catch (err: any) {
       if (err instanceof Error && (err.message.includes('fetch') || err.message.includes('NetworkError'))) {
         try {
-          const reqs: string[] = [];
-          if (reqDiaper) reqs.push('diaper');
-          if (reqCaged) reqs.push('caged');
-          if (reqStroller) reqs.push('stroller');
-          const formattedRequirements = reqs.join(', ');
-          const dbPetMenu = petMenu === 'unsure' ? 'not_sure' : petMenu;
-
           await addPendingReport('place', {
             p_name: selectedPlace.name,
             p_address: selectedPlace.address,
@@ -219,14 +185,14 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             p_longitude: resolvedLng,
             p_device_id: getDeviceId(),
             p_claim: claim,
-            p_pet_menu: dbPetMenu,
+            p_pet_menu: 'not_sure',
             p_price_range: priceRange,
-            p_notes: formattedRequirements,
-            p_operating_hours: includeStoreHours ? (operatingHours as any) : null,
+            p_notes: '',
+            p_operating_hours: null,
           });
           alert("Network failure. Saved! We'll register this place once you're back online. 🐾");
           triggerNicknamePromptFlow();
-          onSuccess();
+          onSuccess('offline', selectedPlace.name, null);
           onClose();
           return;
         } catch (dbErr) {
@@ -287,7 +253,6 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
         </div>
       )}
 
-      {/* Place search lookup */}
       {!selectedPlace ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minHeight: '160px' }}>
           <div>
@@ -330,9 +295,8 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
           </div>
         </div>
       ) : (
-        /* Form content prefilled once place is selected */
         <form onSubmit={handleSubmit}>
-          {/* Row 1: Place Name */}
+          {/* Place Name */}
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
               Place Name
@@ -354,7 +318,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             />
           </div>
 
-          {/* Row 2: Address */}
+          {/* Address */}
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
               Address
@@ -376,7 +340,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             />
           </div>
 
-          {/* Row 3: City/Municipality (Read-only) and Province (Editable Combobox) */}
+          {/* City + Province */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '12px' }}>
             <div>
               <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
@@ -400,22 +364,18 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
                 }}
               />
             </div>
-
             <div>
               <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
                 Province / Region
               </label>
-              <ProvinceCombobox
-                value={province}
-                onChange={setProvince}
-              />
+              <ProvinceCombobox value={province} onChange={setProvince} />
             </div>
           </div>
 
-          {/* Row 3: Categories / Tags (Whole Row) */}
+          {/* Categories */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#4b5563', marginBottom: '6px' }}>
-              Categories / Tags * (Select all that apply)
+              Categories * (Select all that apply)
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {categories.map((cat) => {
@@ -444,201 +404,82 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
             </div>
           </div>
 
-          {/* Store Hours Input Component (Optional Toggle) */}
-          <div
-            style={{
-              marginBottom: '16px',
-              backgroundColor: includeStoreHours ? theme.colors.softPink : '#FAFAFA',
-              borderRadius: '14px',
-              border: `1.5px solid ${includeStoreHours ? theme.colors.terracotta : theme.colors.borderLight}`,
-              padding: '12px 14px',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                cursor: 'pointer',
-                userSelect: 'none',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <input
-                  type="checkbox"
-                  checked={includeStoreHours}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setIncludeStoreHours(checked);
-                    if (checked && !operatingHours) {
-                      setOperatingHours(getDefaultOperatingHours());
-                    }
-                  }}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    accentColor: theme.colors.terracotta,
-                    cursor: 'pointer',
-                  }}
-                />
-                <span style={{ fontSize: '13px', fontWeight: 600, color: theme.colors.textDark }}>
-                  Add store operating hours (Optional)
-                </span>
-              </div>
-              {operatingHours && includeStoreHours && (
-                <span style={{ fontSize: '11px', color: theme.colors.terracotta, fontWeight: 700 }}>
-                  ✓ Hours set
-                </span>
-              )}
+          {/* Pet Access — 2-option pill select */}
+          <div style={{ marginBottom: '16px', borderTop: '1px solid #eee', paddingTop: '14px' }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '8px' }}>
+              🐾 Pet Access Policy
             </label>
-
-            {includeStoreHours && (
-              <div style={{ marginTop: '12px' }}>
-                <StoreHoursFormInput value={operatingHours} onChange={setOperatingHours} />
-              </div>
-            )}
-          </div>
-
-          <div style={{ marginBottom: '16px', borderTop: '1px solid #eee', paddingTop: '12px' }}>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '14px' }}>
-              What is the initial pet policy report?
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                <input
-                  type="radio"
-                  name="claim"
-                  value="allowed"
-                  checked={claim === 'allowed'}
-                  onChange={() => setClaim('allowed')}
-                />
-                Allowed (Pets welcome indoors)
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                <input
-                  type="radio"
-                  name="claim"
-                  value="outdoor_only"
-                  checked={claim === 'outdoor_only'}
-                  onChange={() => setClaim('outdoor_only')}
-                />
-                Outdoor Only (Al fresco only)
-              </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              {[
+                { id: 'allowed', label: '✅ Pets Allowed', sub: 'Welcome indoors' },
+                { id: 'outdoor_only', label: '🌿 Outdoor Only', sub: 'Al fresco only' },
+              ].map((opt) => {
+                const isSelected = claim === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setClaim(opt.id as typeof claim)}
+                    style={{
+                      padding: '12px 10px',
+                      borderRadius: '12px',
+                      border: isSelected ? `2px solid ${theme.colors.terracotta}` : `1px solid ${theme.colors.borderLight}`,
+                      backgroundColor: isSelected ? theme.colors.softPink : '#ffffff',
+                      color: isSelected ? theme.colors.terracotta : theme.colors.textDark,
+                      fontWeight: isSelected ? 700 : 500,
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <div style={{ fontWeight: 700 }}>{opt.label}</div>
+                    <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>{opt.sub}</div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div style={{ marginBottom: '16px', borderTop: '1px solid #eee', paddingTop: '12px' }}>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '14px' }}>
-              Price Range
+          {/* Price Range — 3-pill compact */}
+          <div style={{ marginBottom: '20px', borderTop: '1px solid #eee', paddingTop: '14px' }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '8px' }}>
+              💰 Price Range
             </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                <input
-                  type="radio"
-                  name="priceRange"
-                  value="budget"
-                  checked={priceRange === 'budget'}
-                  onChange={() => setPriceRange('budget')}
-                />
-                Budget-Friendly
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                <input
-                  type="radio"
-                  name="priceRange"
-                  value="mid"
-                  checked={priceRange === 'mid'}
-                  onChange={() => setPriceRange('mid')}
-                />
-                Mid-Range
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                <input
-                  type="radio"
-                  name="priceRange"
-                  value="splurge"
-                  checked={priceRange === 'splurge'}
-                  onChange={() => setPriceRange('splurge')}
-                />
-                Splurge-Worthy
-              </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+              {[
+                { id: 'budget', label: '🐾 Budget', sub: 'Under ₱200' },
+                { id: 'mid', label: '🐾🐾 Mid', sub: '₱200–₱600' },
+                { id: 'splurge', label: '🐾🐾🐾 Splurge', sub: '₱600+' },
+              ].map((opt) => {
+                const isSelected = priceRange === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setPriceRange(opt.id as typeof priceRange)}
+                    style={{
+                      padding: '10px 6px',
+                      borderRadius: '12px',
+                      border: isSelected ? `2px solid ${theme.colors.terracotta}` : `1px solid ${theme.colors.borderLight}`,
+                      backgroundColor: isSelected ? theme.colors.softPink : '#ffffff',
+                      color: isSelected ? theme.colors.terracotta : theme.colors.textDark,
+                      fontWeight: isSelected ? 700 : 500,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <div style={{ fontWeight: 700 }}>{opt.label}</div>
+                    <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '2px' }}>{opt.sub}</div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div style={{ marginBottom: '16px', borderTop: '1px solid #eee', paddingTop: '12px' }}>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '14px' }}>
-              Does this place have a pet menu?
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                <input
-                  type="radio"
-                  name="petMenu"
-                  value="yes"
-                  checked={petMenu === 'yes'}
-                  onChange={() => setPetMenu('yes')}
-                />
-                Yes (Includes pet treats, puppuccinos, or a dedicated menu)
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                <input
-                  type="radio"
-                  name="petMenu"
-                  value="no"
-                  checked={petMenu === 'no'}
-                  onChange={() => setPetMenu('no')}
-                />
-                No (No special food options for pets)
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                <input
-                  type="radio"
-                  name="petMenu"
-                  value="unsure"
-                  checked={petMenu === 'unsure'}
-                  onChange={() => setPetMenu('unsure')}
-                />
-                Unsure
-              </label>
-            </div>
-
-          </div>
-
-          <div style={{ marginBottom: '20px', borderTop: '1px solid #eee', paddingTop: '12px' }}>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '14px' }}>
-              Pet Requirements (Select all that apply)
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                <input
-                  type="checkbox"
-                  checked={reqDiaper}
-                  onChange={(e) => setReqDiaper(e.target.checked)}
-                />
-                Diapers
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                <input
-                  type="checkbox"
-                  checked={reqCaged}
-                  onChange={(e) => setReqCaged(e.target.checked)}
-                />
-                Caged
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                <input
-                  type="checkbox"
-                  checked={reqStroller}
-                  onChange={(e) => setReqStroller(e.target.checked)}
-                />
-                Stroller / Carrier
-              </label>
-            </div>
-
-
-          </div>
-
+          {/* Action Buttons */}
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <button
               type="button"
@@ -676,14 +517,15 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
               type="submit"
               disabled={isSubmitting}
               style={{
-                padding: '8px 16px',
+                padding: '8px 20px',
                 backgroundColor: '#e07a5f',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontWeight: 600,
+                fontWeight: 700,
                 fontSize: '14px',
+                boxShadow: '0 4px 12px rgba(224,122,95,0.3)',
               }}
             >
               {isSubmitting ? 'Adding...' : 'Add to Directory 🐾'}

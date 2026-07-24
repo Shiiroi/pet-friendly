@@ -3,11 +3,13 @@ import { FaBone } from 'react-icons/fa';
 import { theme } from '../../../shared/styles/theme';
 import { type PlaceInBounds, type ReportItem } from '../../../shared/types/geo';
 import { getDeviceId } from '../../../shared/utils/device-id';
+import { supabase } from '../../../shared/api/supabase-client';
 import { getConfidenceStyle } from '../../../shared/utils/confidence-color';
 import { StatusCard } from '../../../shared/components/StatusCard';
 import { StoreHoursView } from './StoreHoursView';
 import { EditStoreHoursModal } from './EditStoreHoursModal';
 import { MenuPhotosView } from './MenuPhotosView';
+import { UploadMenuPhotoModal } from './UploadMenuPhotoModal';
 import type { WeeklyOperatingHours } from '../types/hours';
 import type { MenuPhoto } from '../../../shared/types/pet-menu';
 
@@ -82,6 +84,9 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
   const [isEditHoursOpen, setIsEditHoursOpen] = useState(false);
   const [localHours, setLocalHours] = useState<WeeklyOperatingHours | null | undefined>(dbPlace?.operating_hours);
   const [localPhotos, setLocalPhotos] = useState<MenuPhoto[]>(dbPlace?.menu_photos || []);
+  const [isUploadPhotoOpen, setIsUploadPhotoOpen] = useState(false);
+  const [petMenuVote, setPetMenuVote] = useState<'yes' | 'no' | 'not_sure' | null>(null);
+  const [isPetMenuInlineOpen, setIsPetMenuInlineOpen] = useState(false);
 
   useEffect(() => {
     setLocalHours(dbPlace?.operating_hours);
@@ -218,6 +223,153 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
               hours={localHours}
               onEditClick={dbPlace ? () => setIsEditHoursOpen(true) : undefined}
             />
+            {/* Contribution CTA row — Google Maps style */}
+            <div
+              style={{
+                marginTop: '10px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}
+            >
+              <p style={{ fontSize: '11px', fontWeight: 700, color: theme.colors.textMuted, margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Help improve this listing
+              </p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsEditHoursOpen(true)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '20px',
+                    border: `1px solid ${localHours ? theme.colors.terracotta : theme.colors.borderLight}`,
+                    backgroundColor: localHours ? theme.colors.softPink : '#f9fafb',
+                    color: localHours ? theme.colors.terracotta : theme.colors.textDark,
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  ⏰ {localHours ? 'Edit Hours' : '+ Add Hours'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsPetMenuInlineOpen((v) => !v)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '20px',
+                    border: `1px solid ${isPetMenuInlineOpen ? theme.colors.terracotta : theme.colors.borderLight}`,
+                    backgroundColor: isPetMenuInlineOpen ? theme.colors.softPink : '#f9fafb',
+                    color: isPetMenuInlineOpen ? theme.colors.terracotta : theme.colors.textDark,
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  🦴 Pet Menu?
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsUploadPhotoOpen(true)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '20px',
+                    border: `1px solid ${theme.colors.borderLight}`,
+                    backgroundColor: '#f9fafb',
+                    color: theme.colors.textDark,
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  📷 Upload Menu Photo
+                </button>
+              </div>
+
+              {/* Pet Menu inline quick-answer */}
+              {isPetMenuInlineOpen && (
+                <div
+                  style={{
+                    backgroundColor: '#fffcfb',
+                    borderRadius: '14px',
+                    border: `1.5px solid ${theme.colors.softPink}`,
+                    padding: '12px',
+                  }}
+                >
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: theme.colors.textDark, margin: '0 0 8px 0' }}>
+                    🦴 Does this place have a pet menu?
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px', marginBottom: '10px' }}>
+                    {([{ id: 'yes', label: 'Yes 🐾' }, { id: 'no', label: 'No ❌' }, { id: 'not_sure', label: 'Not Sure' }] as const).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setPetMenuVote(opt.id)}
+                        style={{
+                          padding: '8px 4px',
+                          borderRadius: '10px',
+                          border: petMenuVote === opt.id ? `2px solid ${theme.colors.terracotta}` : `1px solid ${theme.colors.borderLight}`,
+                          backgroundColor: petMenuVote === opt.id ? theme.colors.softPink : '#ffffff',
+                          color: petMenuVote === opt.id ? theme.colors.terracotta : theme.colors.textDark,
+                          fontWeight: petMenuVote === opt.id ? 700 : 500,
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  {petMenuVote && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!dbPlace?.id || !petMenuVote) return;
+                        try {
+                          await (supabase.rpc as any)('create_pet_policy_report', {
+                            p_place_id: dbPlace.id,
+                            p_device_id: getDeviceId(),
+                            p_claim: null,
+                            p_pet_menu: petMenuVote,
+                            p_price_range: null,
+                            p_notes: null,
+                          });
+                          setIsPetMenuInlineOpen(false);
+                          setPetMenuVote(null);
+                        } catch {
+                          // fail silently — user can retry
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '9px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        backgroundColor: theme.colors.terracotta,
+                        color: '#ffffff',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Submit Answer
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
             <MenuPhotosView
               placeId={dbPlace?.id}
               placeName={dbPlace?.name}
@@ -687,6 +839,18 @@ export const PlaceDetail: React.FC<PlaceDetailProps> = ({
           initialHours={localHours}
           onClose={() => setIsEditHoursOpen(false)}
           onSuccess={(updated) => setLocalHours(updated)}
+        />
+      )}
+
+      {isUploadPhotoOpen && dbPlace && (
+        <UploadMenuPhotoModal
+          placeId={dbPlace.id}
+          placeName={dbPlace.name}
+          onClose={() => setIsUploadPhotoOpen(false)}
+          onSuccess={(newPhoto) => {
+            setLocalPhotos((prev) => [...prev, newPhoto]);
+            setIsUploadPhotoOpen(false);
+          }}
         />
       )}
     </div>

@@ -13,6 +13,7 @@ import {
   loadGoogleMapsScript,
   AddPlaceForm
 } from '../features/places';
+import { PlaceAddedModal } from '../features/places/components/PlaceAddedModal';
 import { useReportsForPlace, ReportForm, FlagButton } from '../features/reports';
 import { NicknamePrompt } from '../features/devices';
 import { useOutboxSync } from '../shared/outbox/use-outbox-sync';
@@ -32,6 +33,7 @@ const HomePage: React.FC = () => {
   const [reportingPlace, setReportingPlace] = useState<PlaceInBounds | null>(null);
   const [flaggingPlace, setFlaggingPlace] = useState<PlaceInBounds | null>(null);
   const [showNicknamePrompt, setShowNicknamePrompt] = useState(false);
+  const [placeAdded, setPlaceAdded] = useState<{ id: string; name: string; hours?: any } | null>(null);
 
   const queryClient = useQueryClient();
   const listRef = useRef<HTMLDivElement>(null);
@@ -99,6 +101,19 @@ const HomePage: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['reports-for-place'] });
     queryClient.invalidateQueries({ queryKey: ['home-stats'] });
     setGhostPlace(null);
+  };
+
+  /**
+   * Called by AddPlaceForm after a new place is successfully created.
+   * Stashes the new place info so PlaceAddedModal can be shown.
+   */
+  const handleAddPlaceSuccess = (newPlaceId: string, placeName: string, autoHours?: any) => {
+    handleFormSuccess();
+    setIsAddingPlace(false);
+    setGhostPlace(null);
+    if (newPlaceId && newPlaceId !== 'offline') {
+      setPlaceAdded({ id: newPlaceId, name: placeName, hours: autoHours });
+    }
   };
 
   const handleNicknameSubmit = async (nickname: string) => {
@@ -208,7 +223,7 @@ const HomePage: React.FC = () => {
                     setIsAddingPlace(false);
                     setGhostPlace(null);
                   }}
-                  onSuccess={handleFormSuccess}
+                  onSuccess={handleAddPlaceSuccess}
                   onTriggerNicknamePrompt={() => setShowNicknamePrompt(true)}
                 />
               </div>
@@ -335,6 +350,16 @@ const HomePage: React.FC = () => {
         onClose={() => setShowNicknamePrompt(false)}
         onSubmitNickname={handleNicknameSubmit}
       />
+
+      {/* Post-submission progressive disclosure — shown after a new place is added */}
+      {placeAdded && (
+        <PlaceAddedModal
+          placeId={placeAdded.id}
+          placeName={placeAdded.name}
+          autoHours={placeAdded.hours}
+          onDone={() => setPlaceAdded(null)}
+        />
+      )}
 
       {/* 6. Sync status toast indicator */}
       {syncStatus && (
