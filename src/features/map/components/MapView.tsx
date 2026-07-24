@@ -160,8 +160,7 @@ function createClusterIcon(count: number) {
 const MapEvents: React.FC<{
   onBoundsChange: (bounds: MapBounds) => void;
   onZoomChange: (zoom: number) => void;
-  onMapBoundsUpdate: (bounds: MapBounds) => void;
-}> = ({ onBoundsChange, onZoomChange, onMapBoundsUpdate }) => {
+}> = ({ onBoundsChange, onZoomChange }) => {
   const map = useMapEvents({
     moveend: () => {
       const b = map.getBounds();
@@ -172,7 +171,6 @@ const MapEvents: React.FC<{
         maxLng: b.getEast(),
       };
       onBoundsChange(newBounds);
-      onMapBoundsUpdate(newBounds);
     },
     zoomend: () => {
       onZoomChange(map.getZoom());
@@ -188,7 +186,6 @@ const MapEvents: React.FC<{
       maxLng: b.getEast(),
     };
     onBoundsChange(newBounds);
-    onMapBoundsUpdate(newBounds);
     onZoomChange(map.getZoom());
   }, [map]);
 
@@ -337,7 +334,6 @@ export const MapView: React.FC<MapViewProps> = ({
 }) => {
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [initialCenter] = useState<[number, number]>(MANILA_CENTER);
-  const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
 
   // Initialize Supercluster instance using screen-pixel distance clustering
   const supercluster = useMemo(() => {
@@ -364,15 +360,9 @@ export const MapView: React.FC<MapViewProps> = ({
   }, [places]);
 
   const clusters = useMemo(() => {
-    if (!mapBounds) return [];
-    const bbox: [number, number, number, number] = [
-      mapBounds.minLng,
-      mapBounds.minLat,
-      mapBounds.maxLng,
-      mapBounds.maxLat,
-    ];
-    return supercluster.getClusters(bbox, Math.floor(zoom));
-  }, [supercluster, mapBounds, zoom]);
+    if (!places || places.length === 0) return [];
+    return supercluster.getClusters([-180, -85, 180, 85], Math.floor(zoom));
+  }, [supercluster, places, zoom]);
 
   const getMarkerIcon = (place: PlaceInBounds) => {
     const style = getConfidenceStyle('policy', place.claim, place.agreeing_devices, place.runner_up_agreeing_devices);
@@ -445,7 +435,6 @@ export const MapView: React.FC<MapViewProps> = ({
         <MapEvents
           onBoundsChange={onBoundsChange}
           onZoomChange={setZoom}
-          onMapBoundsUpdate={setMapBounds}
         />
         <MapController center={centerOverride} />
         <ZoomControls />
