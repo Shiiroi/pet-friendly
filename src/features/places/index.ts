@@ -1,9 +1,13 @@
 export type { Place } from './types';
 export type * from './types/hours';
 export { DAYS_OF_WEEK, DAY_LABELS, SHORT_DAY_LABELS } from './types/hours';
-export { searchGooglePlaces, getPlaceDetails, loadGoogleMapsScript } from './api/search-google-places';
+export { searchGooglePlaces, loadGoogleMapsScript } from './api/search-google-places';
 export { getPlacesInBounds } from './api/get-places-in-bounds';
 export { usePlacesInBounds } from './hooks/use-places-in-bounds';
+export { getAllPlaces } from './api/get-all-places';
+export { useAllPlaces } from './hooks/use-all-places';
+export { getPlaceDetailsRecord } from './api/get-place-details';
+export { usePlaceDetails } from './hooks/use-place-details';
 export { PlaceSearchBar } from './components/PlaceSearchBar';
 export { PlaceDetail } from './components/PlaceDetail';
 export { AddPlaceForm } from './components/AddPlaceForm';

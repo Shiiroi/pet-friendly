@@ -124,6 +124,20 @@ export const PlaceSearchBar: React.FC<PlaceSearchBarProps> = ({
     sessionTokenRef.current = null;
 
     if (lat !== undefined && lng !== undefined) {
+      // Duplicate Safeguard: Check if place already exists in loaded places
+      const existingMatch = loadedPlaces.find((p) => {
+        const normSearchName = res.displayName.trim().toLowerCase();
+        const normPlaceName = p.name.trim().toLowerCase();
+        const isNameMatch = normSearchName.includes(normPlaceName) || normPlaceName.includes(normSearchName);
+        const dist = Math.hypot(lat! - p.latitude, lng! - p.longitude);
+        return (isNameMatch && dist < 0.001) || dist < 0.0003;
+      });
+
+      if (existingMatch) {
+        handleSelectLocal(existingMatch);
+        return;
+      }
+
       onSelectGeocodePlace(lat, lng, res.displayName, res.address, openingHours, city, province);
     }
     setQuery(res.displayName);

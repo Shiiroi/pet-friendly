@@ -8,23 +8,19 @@ import { MapView } from '../features/map';
 import { 
   PlaceSearchBar, 
   PlaceDetail, 
-  usePlacesInBounds, 
+  useAllPlaces,
+  usePlaceDetails,
   loadGoogleMapsScript,
   AddPlaceForm
 } from '../features/places';
 import { useReportsForPlace, ReportForm, FlagButton } from '../features/reports';
 import { NicknamePrompt } from '../features/devices';
 import { useOutboxSync } from '../shared/outbox/use-outbox-sync';
-import { type PlaceInBounds, type MapBounds } from '../shared/types/geo';
+import { type PlaceInBounds } from '../shared/types/geo';
 import { theme } from '../shared/styles/theme';
 import { env } from '../config/env';
 
-/**
- * Main application dashboard containing sequential homepage sections:
- * Hero -> Directory Search/List -> MapView -> Explainer -> FAQ
- */
 const HomePage: React.FC = () => {
-  const [bounds, setBounds] = useState<MapBounds | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<PlaceInBounds | null>(null);
   const [ghostPlace, setGhostPlace] = useState<{ latitude: number; longitude: number; name: string; address: string } | null>(null);
   const [isGhostSelected, setIsGhostSelected] = useState(false);
@@ -43,8 +39,11 @@ const HomePage: React.FC = () => {
   // Synchronize outbox queue from IndexedDB to remote Supabase database on network recovery
   const { syncStatus } = useOutboxSync();
 
-  // Fetch pet-friendly locations within active viewport bounding box
-  const { data: places = [] } = usePlacesInBounds(bounds);
+  // Client-side memory dataset (TanStack Query): Fetches once on initial load, zero Supabase API calls on pan/zoom
+  const { data: places = [] } = useAllPlaces();
+
+  // Lazy-load full place details record from Supabase on demand when an individual place is selected
+  usePlaceDetails(selectedPlace?.id);
 
   // Fetch policy reviews timeline if a database place card is selected
   const { 
@@ -95,6 +94,7 @@ const HomePage: React.FC = () => {
 
   const handleFormSuccess = () => {
     // Invalidate cached query keys to trigger automatic viewport markers reload
+    queryClient.invalidateQueries({ queryKey: ['all-places'] });
     queryClient.invalidateQueries({ queryKey: ['places-in-bounds'] });
     queryClient.invalidateQueries({ queryKey: ['reports-for-place'] });
     queryClient.invalidateQueries({ queryKey: ['home-stats'] });
@@ -141,7 +141,7 @@ const HomePage: React.FC = () => {
             {/* Embedded interactive map */}
             <MapView
               places={places}
-              onBoundsChange={setBounds}
+              onBoundsChange={() => {}}
               onSelectPlace={handleSelectLocalPlace}
               centerOverride={centerOverride}
               ghostPlace={ghostPlace}
