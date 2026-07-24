@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import { FaMap, FaCity, FaSatellite } from 'react-icons/fa';
 import Supercluster from 'supercluster';
 import { theme } from '../../../shared/styles/theme';
 import type { PlaceInBounds, MapBounds } from '../../../shared/types/geo';
@@ -21,6 +22,10 @@ interface MapViewProps {
   onSelectGhostPlace: (ghost: { latitude: number; longitude: number; name: string; address: string }) => void;
   /** Toggle indicator to hide the "No spots here" overlay during search/adds. */
   hideExplainer?: boolean;
+  /** Active status for Grab/Angkas/FoodPanda-style center pin drop mode */
+  isPinDropActive?: boolean;
+  /** Callback emitted on map move during pin drop mode with live center coordinates */
+  onCenterPinMove?: (lat: number, lng: number) => void;
 }
 
 interface SuperclusterPointProps {
@@ -197,7 +202,10 @@ const MapEvents: React.FC<{
   onBoundsChange: (bounds: MapBounds) => void;
   onZoomChange: (zoom: number) => void;
   onClearSpiderfy: () => void;
-}> = ({ onBoundsChange, onZoomChange, onClearSpiderfy }) => {
+  onCenterPinMove?: (lat: number, lng: number) => void;
+  isPinDropActive?: boolean;
+}> = ({ onBoundsChange, onZoomChange, onClearSpiderfy, onCenterPinMove, isPinDropActive }) => {
+
   const map = useMapEvents({
     moveend: () => {
       const b = map.getBounds();
@@ -207,10 +215,20 @@ const MapEvents: React.FC<{
         maxLat: b.getNorth(),
         maxLng: b.getEast(),
       });
+      // Fire reverse geocode only once per completed pan — avoids rate-limiting
+      if (isPinDropActive && onCenterPinMove) {
+        const center = map.getCenter();
+        onCenterPinMove(center.lat, center.lng);
+      }
     },
     zoomend: () => {
       onZoomChange(map.getZoom());
       onClearSpiderfy();
+      // Also geocode on zoom settle
+      if (isPinDropActive && onCenterPinMove) {
+        const center = map.getCenter();
+        onCenterPinMove(center.lat, center.lng);
+      }
     },
   });
 
@@ -236,6 +254,93 @@ const MapController: React.FC<{ center: [number, number] | null }> = ({ center }
     }
   }, [center, map]);
   return null;
+};
+
+
+// ---------------------------------------------------------------------------
+// Tile style definitions
+// ---------------------------------------------------------------------------
+
+const TILE_STYLES = [
+  {
+    id: 'voyager',
+    label: 'Clean',
+    Icon: FaMap,
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    overlay: null as string | null,
+  },
+  {
+    id: 'osm',
+    label: 'Detailed',
+    Icon: FaCity,
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    overlay: null as string | null,
+  },
+  {
+    id: 'satellite',
+    label: 'Satellite',
+    Icon: FaSatellite,
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DigitalGlobe, GeoEye, CNES/Airbus DS, USGS, AeroGRID, IGN',
+    overlay: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png' as string | null,
+  },
+];
+
+type TileStyleId = 'voyager' | 'osm' | 'satellite';
+
+
+// ---------------------------------------------------------------------------
+// Tile style picker button group (renders inside MapContainer)
+// ---------------------------------------------------------------------------
+
+const TileStylePicker: React.FC<{ current: TileStyleId; onChange: (id: TileStyleId) => void }> = ({ current, onChange }) => {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: '176px',
+        right: '16px',
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#ffffff',
+        borderRadius: '12px',
+        boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
+        overflow: 'hidden',
+        border: `1px solid ${theme.colors.borderLight}`,
+      }}
+    >
+      {TILE_STYLES.map((style, i) => {
+        const { Icon } = style;
+        return (
+          <button
+            key={style.id}
+            type="button"
+            title={style.label}
+            onClick={() => onChange(style.id as TileStyleId)}
+            style={{
+              width: '36px',
+              height: '36px',
+              backgroundColor: current === style.id ? theme.colors.softPink : '#ffffff',
+              border: 'none',
+              borderBottom: i < TILE_STYLES.length - 1 ? `1px solid ${theme.colors.borderLight}` : 'none',
+              color: current === style.id ? theme.colors.terracotta : theme.colors.textMuted,
+              fontSize: '15px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background-color 0.15s ease',
+            }}
+          >
+            <Icon size={15} />
+          </button>
+        );
+      })}
+    </div>
+  );
 };
 
 const ZoomControls: React.FC = () => {
@@ -359,6 +464,64 @@ const ClusterMarker: React.FC<{
 };
 
 /**
+ * Fixed Center-Screen Pin Overlay for Grab/Angkas/FoodPanda-style location picking.
+ */
+const CenterPinOverlay: React.FC = () => {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -100%)',
+        pointerEvents: 'none',
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: theme.colors.terracotta,
+          border: '2.5px solid #ffffff',
+          width: '42px',
+          height: '42px',
+          borderRadius: '50% 50% 50% 0',
+          transform: 'rotate(-45deg)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 8px 22px rgba(224, 122, 95, 0.45)',
+        }}
+      >
+        <span
+          style={{
+            transform: 'rotate(45deg)',
+            color: '#ffffff',
+            fontSize: '18px',
+            fontWeight: 700,
+            marginTop: '-2px',
+          }}
+        >
+          🐾
+        </span>
+      </div>
+      <div
+        style={{
+          width: '12px',
+          height: '6px',
+          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          borderRadius: '50%',
+          marginTop: '-4px',
+          boxShadow: '0 0 6px rgba(0,0,0,0.3)',
+        }}
+      />
+    </div>
+  );
+};
+
+/**
  * Main styled Leaflet Map view drawing places, dynamic Supercluster spatial centroids, and spiderfy ring fanout.
  */
 export const MapView: React.FC<MapViewProps> = ({
@@ -369,6 +532,8 @@ export const MapView: React.FC<MapViewProps> = ({
   ghostPlace,
   onSelectGhostPlace,
   hideExplainer,
+  isPinDropActive,
+  onCenterPinMove,
 }) => {
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [initialCenter] = useState<[number, number]>(MANILA_CENTER);
@@ -376,6 +541,9 @@ export const MapView: React.FC<MapViewProps> = ({
     center: [number, number];
     items: Array<{ place: PlaceInBounds; pos: { lat: number; lng: number } }>;
   } | null>(null);
+  const [tileStyle, setTileStyle] = useState<TileStyleId>('voyager');
+
+  const activeTile = TILE_STYLES.find((s) => s.id === tileStyle) ?? TILE_STYLES[0];
 
   // Initialize Supercluster instance using screen-pixel distance clustering
   const supercluster = useMemo(() => {
@@ -441,7 +609,7 @@ export const MapView: React.FC<MapViewProps> = ({
     >
       <style>{`
         .map-container .leaflet-tile-pane {
-          filter: sepia(8%) saturate(85%) hue-rotate(-8deg);
+          filter: saturate(90%) brightness(1.01);
         }
 
         .custom-paw-pin > div, .custom-cluster > div, .custom-paw-unconfirmed > div, .custom-ghost-pin > div {
@@ -476,17 +644,29 @@ export const MapView: React.FC<MapViewProps> = ({
         style={{ width: '100%', height: '100%', zIndex: 1 }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          key={activeTile.id}
+          attribution={activeTile.attribution}
+          url={activeTile.url}
         />
+        {activeTile.overlay && (
+          <TileLayer
+            key={`${activeTile.id}-overlay`}
+            url={activeTile.overlay}
+            attribution=""
+            pane="overlayPane"
+          />
+        )}
 
         <MapEvents
           onBoundsChange={onBoundsChange}
           onZoomChange={setZoom}
           onClearSpiderfy={() => setSpiderfiedState(null)}
+          onCenterPinMove={onCenterPinMove}
+          isPinDropActive={isPinDropActive}
         />
         <MapController center={centerOverride} />
         <ZoomControls />
+        <TileStylePicker current={tileStyle} onChange={setTileStyle} />
 
         {/* Render Supercluster points and centroids */}
         {clusters.map((feature, idx) => {
@@ -556,13 +736,25 @@ export const MapView: React.FC<MapViewProps> = ({
           </>
         )}
 
-        {/* Render ghost place selection from geocoder if present */}
+        {/* Render ghost place selection from geocoder if present (Draggable pin like Grab / Foodpanda) */}
         {ghostPlace && (
           <Marker
             position={[ghostPlace.latitude, ghostPlace.longitude]}
+            draggable={true}
             icon={createGhostIcon()}
             eventHandlers={{
               click: () => onSelectGhostPlace(ghostPlace),
+              dragend: (e: any) => {
+                const marker = e.target;
+                if (marker) {
+                  const latLng = marker.getLatLng();
+                  onSelectGhostPlace({
+                    ...ghostPlace,
+                    latitude: latLng.lat,
+                    longitude: latLng.lng,
+                  });
+                }
+              },
             }}
           />
         )}
@@ -615,6 +807,9 @@ export const MapView: React.FC<MapViewProps> = ({
           </p>
         </div>
       )}
+
+      {/* Grab / Angkas / FoodPanda style Center Pin Overlay */}
+      {isPinDropActive && <CenterPinOverlay />}
     </div>
   );
 };
