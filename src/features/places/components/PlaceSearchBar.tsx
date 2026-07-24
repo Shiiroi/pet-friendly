@@ -15,7 +15,15 @@ interface PlaceSearchBarProps {
   /** Callback triggered when a local pin is selected. */
   onSelectLocalPlace: (place: PlaceInBounds) => void;
   /** Callback triggered when an external location is selected to center the map. */
-  onSelectGeocodePlace: (lat: number, lng: number, name: string, address: string, openingHours?: WeeklyOperatingHours | null) => void;
+  onSelectGeocodePlace: (
+    lat: number,
+    lng: number,
+    name: string,
+    address: string,
+    openingHours?: WeeklyOperatingHours | null,
+    city?: string,
+    province?: string
+  ) => void;
   /** Optional custom container style overrides (e.g. for form modals). */
   containerStyle?: React.CSSProperties;
 }
@@ -97,14 +105,18 @@ export const PlaceSearchBar: React.FC<PlaceSearchBarProps> = ({
     let lat = res.lat;
     let lng = res.lng;
     let openingHours: WeeklyOperatingHours | null | undefined = null;
+    let city: string | undefined;
+    let province: string | undefined;
 
-    // If it's a Google prediction, lazy-resolve coordinates and hours upon click
+    // If it's a Google prediction, lazy-resolve coordinates and details upon click
     if (lat === undefined || lng === undefined) {
       const coords = await getPlaceDetails(res.id, sessionTokenRef.current);
       if (coords) {
         lat = coords.lat;
         lng = coords.lng;
         openingHours = coords.openingHours;
+        city = coords.city;
+        province = coords.province;
       }
     }
 
@@ -112,7 +124,7 @@ export const PlaceSearchBar: React.FC<PlaceSearchBarProps> = ({
     sessionTokenRef.current = null;
 
     if (lat !== undefined && lng !== undefined) {
-      onSelectGeocodePlace(lat, lng, res.displayName, res.address, openingHours);
+      onSelectGeocodePlace(lat, lng, res.displayName, res.address, openingHours, city, province);
     }
     setQuery(res.displayName);
     setIsOpen(false);

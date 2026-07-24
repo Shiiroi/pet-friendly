@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { theme } from '../../../shared/styles/theme';
 import { supabase } from '../../../shared/api/supabase-client';
 import { getDeviceId } from '../../../shared/utils/device-id';
 import { uuidv4 } from '../../../shared/utils/uuid';
@@ -6,6 +7,7 @@ import { addPendingReport } from '../../../shared/outbox/outbox-db';
 import { PlaceSearchBar } from './PlaceSearchBar';
 import { getPlaceDetails } from '../api/search-google-places';
 import { CityCombobox } from './CityCombobox';
+import { ProvinceCombobox } from './ProvinceCombobox';
 import { StoreHoursFormInput } from './StoreHoursFormInput';
 import type { WeeklyOperatingHours } from '../types/hours';
 
@@ -69,6 +71,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
     return '';
   });
 
+  const [province, setProvince] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['Café']);
   const [claim, setClaim] = useState<'allowed' | 'not_allowed' | 'outdoor_only'>('allowed');
   const [petMenu, setPetMenu] = useState<'yes' | 'no' | 'unsure'>('unsure');
@@ -98,10 +101,14 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
     lng: number,
     name: string,
     address: string,
-    hours?: WeeklyOperatingHours | null
+    hours?: WeeklyOperatingHours | null,
+    autoCity?: string,
+    autoProvince?: string
   ) => {
     setSelectedPlace({ id: `custom-${uuidv4()}`, name, address, lat, lng });
-    setCity(extractCityFromAddress(address));
+    const resolvedCity = autoCity || extractCityFromAddress(address);
+    setCity(resolvedCity);
+    if (autoProvince) setProvince(autoProvince);
     if (hours) setOperatingHours(hours);
     setErrorMsg(null);
   };
@@ -140,6 +147,12 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
           if (details.openingHours && !operatingHours) {
             setOperatingHours(details.openingHours);
           }
+          if (details.city && !city) {
+            setCity(details.city);
+          }
+          if (details.province && !province) {
+            setProvince(details.province);
+          }
         } else {
           throw new Error('Coordinates could not be resolved from search results.');
         }
@@ -159,7 +172,7 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
         p_name: selectedPlace.name,
         p_address: selectedPlace.address,
         p_city: city.trim(),
-        p_province: '',
+        p_province: province.trim(),
         p_categories: selectedCategories,
         p_latitude: resolvedLat,
         p_longitude: resolvedLng,
@@ -310,41 +323,29 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
       ) : (
         /* Form content prefilled once place is selected */
         <form onSubmit={handleSubmit}>
-          {/* Row 1: Place Name and City */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                Place Name
-              </label>
-              <input
-                type="text"
-                value={selectedPlace.name}
-                disabled
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: '1px solid #ddd',
-                  backgroundColor: '#f3f4f6',
-                  fontSize: '14px',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#4b5563', marginBottom: '4px' }}>
-                City *
-              </label>
-              <CityCombobox
-                value={city}
-                onChange={setCity}
-                placeholder="e.g. Quezon City"
-              />
-            </div>
+          {/* Row 1: Place Name */}
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+              Place Name
+            </label>
+            <input
+              type="text"
+              value={selectedPlace.name}
+              disabled
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+                backgroundColor: '#f3f4f6',
+                color: theme.colors.textDark,
+                fontSize: '14px',
+                boxSizing: 'border-box',
+              }}
+            />
           </div>
 
-          {/* Row 2: Address (Whole Row) */}
+          {/* Row 2: Address */}
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
               Address
@@ -359,10 +360,35 @@ export const AddPlaceForm: React.FC<AddPlaceFormProps> = ({
                 borderRadius: '8px',
                 border: '1px solid #ddd',
                 backgroundColor: '#f3f4f6',
+                color: theme.colors.textDark,
                 fontSize: '14px',
                 boxSizing: 'border-box',
               }}
             />
+          </div>
+
+          {/* Row 3: City/Municipality and Province in the SAME ROW */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+            <div>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#4b5563', marginBottom: '4px' }}>
+                City / Municipality *
+              </label>
+              <CityCombobox
+                value={city}
+                onChange={setCity}
+                placeholder="e.g. Quezon City"
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#4b5563', marginBottom: '4px' }}>
+                Province / Region
+              </label>
+              <ProvinceCombobox
+                value={province}
+                onChange={setProvince}
+              />
+            </div>
           </div>
 
           {/* Row 3: Categories / Tags (Whole Row) */}

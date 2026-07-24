@@ -53,11 +53,13 @@ export const ProvinceCombobox: React.FC<ProvinceComboboxProps> = ({ value, onCha
         placeholder="Search province..."
         style={{
           width: '100%',
-          padding: '10px',
+          height: '40px',
+          padding: '0 10px',
           borderRadius: '8px',
-          border: '1px solid #ccc',
+          border: '1px solid #ddd',
           backgroundColor: '#ffffff',
-          color: '#1f2937',
+          color: '#2D3748',
+          colorScheme: 'light',
           fontSize: '14px',
           boxSizing: 'border-box',
           outline: 'none',

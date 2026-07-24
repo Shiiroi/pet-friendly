@@ -131,16 +131,47 @@ import type { WeeklyOperatingHours } from '../types/hours';
 import { parseGoogleOpeningHours } from '../../../shared/utils/operating-hours';
 
 /**
- * Fetches coordinates and opening hours for a single chosen place ID.
+ * Helper to extract city/municipality and province from Google address components array.
+ */
+export function extractLocationFromGoogleComponents(addressComponents?: any[]): { city: string; province: string } {
+  if (!Array.isArray(addressComponents)) {
+    return { city: '', province: '' };
+  }
+
+  let city = '';
+  let province = '';
+
+  for (const comp of addressComponents) {
+    const types: string[] = comp.types || [];
+    const text = comp.longText || comp.name || comp.shortText || comp.long_name || comp.short_name || '';
+
+    if (!city && (types.includes('locality') || types.includes('administrative_area_level_2') || types.includes('sublocality_level_1'))) {
+      city = text;
+    }
+
+    if (types.includes('administrative_area_level_1')) {
+      province = text;
+    }
+  }
+
+  if (city.startsWith('City of ')) {
+    city = city.replace('City of ', '') + ' City';
+  }
+
+  return { city, province };
+}
+
+/**
+ * Fetches coordinates, opening hours, city, and province for a single chosen place ID.
  * 
  * @param {string} placeId - Selected Google Place ID.
  * @param {any} sessionToken - Active AutocompleteSessionToken.
- * @returns {Promise<{ lat: number; lng: number; openingHours?: WeeklyOperatingHours | null } | null>} Place details payload.
+ * @returns {Promise<{ lat: number; lng: number; openingHours?: WeeklyOperatingHours | null; city?: string; province?: string } | null>} Place details payload.
  */
 export async function getPlaceDetails(
   placeId: string,
   sessionToken?: any
-): Promise<{ lat: number; lng: number; openingHours?: WeeklyOperatingHours | null } | null> {
+): Promise<{ lat: number; lng: number; openingHours?: WeeklyOperatingHours | null; city?: string; province?: string } | null> {
   const hasGoogleSDK = typeof window !== 'undefined' && (window as any).google?.maps;
   if (!hasGoogleSDK) {
     return null;
@@ -151,7 +182,7 @@ export async function getPlaceDetails(
     const place = new Place({ id: placeId });
     
     await place.fetchFields({
-      fields: ['location', 'regularOpeningHours'],
+      fields: ['location', 'regularOpeningHours', 'addressComponents'],
       sessionToken,
     });
 
@@ -163,10 +194,14 @@ export async function getPlaceDetails(
       ? parseGoogleOpeningHours(place.regularOpeningHours)
       : null;
 
+    const locInfo = extractLocationFromGoogleComponents(place.addressComponents);
+
     return {
       lat: place.location.lat(),
       lng: place.location.lng(),
       openingHours: parsedHours,
+      city: locInfo.city,
+      province: locInfo.province,
     };
   } catch (err) {
     console.error('[Google Details Query Failed]:', err);

@@ -490,9 +490,12 @@ export const StoreHoursFormInput: React.FC<StoreHoursFormInputProps> = ({
                       value={slot.open}
                       onChange={(e) => updateSlot(index, 'open', e.target.value)}
                       style={{
-                        padding: '4px 6px',
+                        padding: '6px 8px',
                         borderRadius: '6px',
                         border: `1px solid ${theme.colors.borderLight}`,
+                        backgroundColor: '#ffffff',
+                        color: theme.colors.textDark,
+                        colorScheme: 'light',
                         fontSize: '12px',
                         width: '100%',
                       }}
@@ -506,9 +509,12 @@ export const StoreHoursFormInput: React.FC<StoreHoursFormInputProps> = ({
                       value={slot.close}
                       onChange={(e) => updateSlot(index, 'close', e.target.value)}
                       style={{
-                        padding: '4px 6px',
+                        padding: '6px 8px',
                         borderRadius: '6px',
                         border: `1px solid ${theme.colors.borderLight}`,
+                        backgroundColor: '#ffffff',
+                        color: theme.colors.textDark,
+                        colorScheme: 'light',
                         fontSize: '12px',
                         width: '100%',
                       }}
