@@ -206,6 +206,51 @@ function findNextOpenDay(
 }
 
 /**
+ * Safely extracts HH:MM string from a Google Places API period point object.
+ */
+function extractGooglePointTime(point: any): string | null {
+  if (!point) return null;
+
+  let hour: number | undefined;
+  let minute: number | undefined;
+
+  if (typeof point.hour === 'number') {
+    hour = point.hour;
+  } else if (typeof point.getHours === 'function') {
+    hour = point.getHours();
+  }
+
+  if (typeof point.minute === 'number') {
+    minute = point.minute;
+  } else if (typeof point.getMinutes === 'function') {
+    minute = point.getMinutes();
+  }
+
+  if (hour !== undefined && minute !== undefined) {
+    const hStr = hour < 10 ? `0${hour}` : `${hour}`;
+    const mStr = minute < 10 ? `0${minute}` : `${minute}`;
+    return `${hStr}:${mStr}`;
+  }
+
+  if (typeof point.time === 'string' && point.time.length >= 4) {
+    return `${point.time.slice(0, 2)}:${point.time.slice(2, 4)}`;
+  }
+
+  return null;
+}
+
+/**
+ * Safely extracts 0-6 day number from a Google Places API period point object.
+ */
+function extractGooglePointDay(point: any): number | undefined {
+  if (!point) return undefined;
+  if (typeof point.day === 'number') return point.day;
+  if (typeof point.getDay === 'function') return point.getDay();
+  if (typeof point.dayOfWeek === 'number') return point.dayOfWeek;
+  return undefined;
+}
+
+/**
  * Parses Google Places API opening hours response into standard WeeklyOperatingHours.
  */
 export function parseGoogleOpeningHours(googleOpeningHours: any): WeeklyOperatingHours | null {
@@ -231,20 +276,27 @@ export function parseGoogleOpeningHours(googleOpeningHours: any): WeeklyOperatin
     });
 
     googleOpeningHours.periods.forEach((period: any) => {
-      if (!period.open) return;
-      const dayKey = googleDayMap[period.open.day];
+      if (!period || !period.open) return;
+
+      const dayNum = extractGooglePointDay(period.open);
+      if (dayNum === undefined) return;
+
+      const dayKey = googleDayMap[dayNum];
       if (!dayKey) return;
+
+      const openTime = extractGooglePointTime(period.open);
 
       if (!period.close) {
         // 24 hours open
         defaultHours[dayKey] = { isClosed: false, is24Hours: true, slots: [] };
       } else {
-        const openTime = `${period.open.time.slice(0, 2)}:${period.open.time.slice(2, 4)}`;
-        const closeTime = `${period.close.time.slice(0, 2)}:${period.close.time.slice(2, 4)}`;
+        const closeTime = extractGooglePointTime(period.close);
 
-        const daySched = defaultHours[dayKey];
-        daySched.isClosed = false;
-        daySched.slots.push({ open: openTime, close: closeTime });
+        if (openTime && closeTime) {
+          const daySched = defaultHours[dayKey];
+          daySched.isClosed = false;
+          daySched.slots.push({ open: openTime, close: closeTime });
+        }
       }
     });
 
