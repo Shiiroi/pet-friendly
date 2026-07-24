@@ -276,29 +276,14 @@ const HomePage: React.FC = () => {
                 </h3>
                 <FlagButton
                   place={flaggingPlace}
+                  initialOpen={true}
+                  onClose={() => setFlaggingPlace(null)}
                   onSuccess={() => {
                     setFlaggingPlace(null);
                     handleFormSuccess();
                   }}
                   onTriggerNicknamePrompt={() => setShowNicknamePrompt(true)}
                 />
-                <button
-                  onClick={() => setFlaggingPlace(null)}
-                  style={{
-                    width: '100%',
-                    marginTop: '16px',
-                    padding: '12px',
-                    backgroundColor: '#ffffff',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '10px',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                  }}
-                >
-                  Cancel
-                </button>
               </div>
             )}
 
