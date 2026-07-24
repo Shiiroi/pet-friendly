@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
 import { theme } from '../../../shared/styles/theme';
 import type { WeeklyOperatingHours } from '../types/hours';
 import { StoreHoursFormInput } from './StoreHoursFormInput';
@@ -48,7 +49,7 @@ export const EditStoreHoursModal: React.FC<EditStoreHoursModalProps> = ({
     }
   };
 
-  return (
+  const modalContent = (
     <div
       style={{
         position: 'fixed',
@@ -56,27 +57,32 @@ export const EditStoreHoursModal: React.FC<EditStoreHoursModalProps> = ({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(3px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 2000,
+        zIndex: 9999,
         padding: '16px',
-        animation: 'fadeIn 0.2s ease-out',
+        boxSizing: 'border-box',
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         style={{
           backgroundColor: '#ffffff',
           borderRadius: '24px',
-          padding: '24px',
-          maxWidth: '480px',
+          padding: '20px',
+          maxWidth: '440px',
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: '85vh',
           overflowY: 'auto',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
           fontFamily: theme.fonts.body,
           boxSizing: 'border-box',
+          position: 'relative',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
@@ -101,6 +107,7 @@ export const EditStoreHoursModal: React.FC<EditStoreHoursModalProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              color: theme.colors.textDark,
             }}
           >
             &times;
@@ -168,4 +175,7 @@ export const EditStoreHoursModal: React.FC<EditStoreHoursModalProps> = ({
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined') return null;
+  return ReactDOM.createPortal(modalContent, document.body);
 };
