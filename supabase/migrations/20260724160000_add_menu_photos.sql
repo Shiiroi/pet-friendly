@@ -21,6 +21,8 @@ end;
 $$;
 
 -- 3. Re-create get_places_in_bounds RPC returning menu_photos
+-- Must drop first; Postgres disallows changing return type via CREATE OR REPLACE
+drop function if exists get_places_in_bounds(double precision, double precision, double precision, double precision);
 create or replace function get_places_in_bounds(
   min_lat double precision,
   min_lng double precision,
