@@ -7,7 +7,7 @@ import {
   getCurrentDayOfWeek,
   getOperatingStatus,
 } from '../../../shared/utils/operating-hours';
-import { FaClock, FaChevronDown, FaChevronUp, FaEdit } from 'react-icons/fa';
+import { FaChevronDown, FaChevronUp, FaEdit } from 'react-icons/fa';
 
 interface StoreHoursViewProps {
   hours?: WeeklyOperatingHours | null;
@@ -18,49 +18,7 @@ export const StoreHoursView: React.FC<StoreHoursViewProps> = ({ hours, onEditCli
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (!hours) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '10px 14px',
-          backgroundColor: '#F9FAFB',
-          borderRadius: '12px',
-          border: `1px solid ${theme.colors.borderLight}`,
-          marginTop: '12px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <FaClock style={{ color: theme.colors.textMuted, fontSize: '14px' }} />
-          <span style={{ fontSize: '13px', color: theme.colors.textMuted, fontWeight: 500 }}>
-            Store hours not added yet
-          </span>
-        </div>
-        {onEditClick && (
-          <button
-            type="button"
-            onClick={onEditClick}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              backgroundColor: theme.colors.softPink,
-              color: theme.colors.terracotta,
-              border: 'none',
-              borderRadius: '8px',
-              padding: '5px 10px',
-              fontSize: '11px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              fontFamily: theme.fonts.heading,
-            }}
-          >
-            <FaEdit size={11} /> Add hours
-          </button>
-        )}
-      </div>
-    );
+    return null;
   }
 
   const status = getOperatingStatus(hours);
